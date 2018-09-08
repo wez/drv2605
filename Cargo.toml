@@ -1,0 +1,24 @@
+[package]
+name = "drv2605"
+version = "0.1.0"
+authors = ["Wez Furlong"]
+keywords = ["embedded-hal-driver"]
+categories = ["embedded", "no-std", "hardware-support", "haptic"]
+description = "A platform agnostic driver for the drv2605 haptic driver"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/wez/drv2605"
+
+[dependencies]
+embedded-hal = "~0.2"
+bitfield = "~0.13"
+
+[dev-dependencies]
+metro_m0 = { path = "../atsamd21-rs/metro_m0" }
+cortex-m = "~0.5"
+panic_rtt = "~0.1"
+cortex-m-rt = "~0.5"
+jlink_rtt = "~0.1"
+
+[features]
+use_semihosting = []
