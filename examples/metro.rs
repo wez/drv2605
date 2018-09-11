@@ -1,3 +1,6 @@
+// Compile this with:
+//  RUSTFLAGS="-C link-arg=-Tlink.x" cargo build --examples --target thumbv6m-none-eabi
+// to build for the metro_m0
 #![no_std]
 #![no_main]
 #![feature(used)]
