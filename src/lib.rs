@@ -3,13 +3,11 @@ A platform agnostic Rust friver for the drv2605, based on the
 [`embedded-hal`] traits.
 */
 #![no_std]
-extern crate embedded_hal as hal;
-#[macro_use]
-extern crate bitfield;
 
-use hal::blocking::i2c::{Write, WriteRead};
+use bitfield::bitfield;
+use embedded_hal::blocking::i2c::{Write, WriteRead};
 
-bitfield!{
+bitfield! {
     pub struct StatusReg(u8);
     impl Debug;
     /// Latching overcurrent detection flag.  If the load impedance is below
@@ -100,7 +98,7 @@ impl From<u8> for Mode {
     }
 }
 
-bitfield!{
+bitfield! {
     pub struct ModeReg(u8);
     impl Debug;
     /// Device reset. Setting this bit performs the equivalent operation of power
@@ -116,6 +114,52 @@ bitfield!{
 
     /// The `Mode`
     pub into Mode, mode, set_mode: 2, 0;
+}
+
+#[derive(Debug)]
+pub struct RatedVoltageReg(u8);
+
+impl Default for RatedVoltageReg {
+    fn default() -> Self {
+        Self(0x3f)
+    }
+}
+
+#[derive(Debug)]
+pub struct OverdriveClampReg(u8);
+
+impl Default for OverdriveClampReg {
+    fn default() -> Self {
+        Self(0x89)
+    }
+}
+
+#[derive(Debug)]
+pub struct AutoCalibrationCompensationReg(u8);
+
+impl Default for AutoCalibrationCompensationReg {
+    fn default() -> Self {
+        Self(0x0D)
+    }
+}
+
+#[derive(Debug)]
+pub struct AutoCalibrationCompensationBackEmfReg(u8);
+
+impl Default for AutoCalibrationCompensationBackEmfReg {
+    fn default() -> Self {
+        Self(0x6D)
+    }
+}
+
+impl Default for ModeReg {
+    fn default() -> Self {
+        let mut reg = Self(0);
+        reg.set_dev_reset(false);
+        reg.set_standby(true);
+        reg.set_mode(0);
+        reg
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -146,7 +190,7 @@ impl From<u8> for LibrarySelection {
     }
 }
 
-bitfield!{
+bitfield! {
     pub struct RegisterThree(u8);
     impl Debug;
     /// This bit sets the output driver into a true high-impedance state. The device
@@ -413,7 +457,7 @@ pub enum Effect {
     SmoothHumFive10 = 123,
 }
 
-bitfield!{
+bitfield! {
     pub struct WaveformReg(u8);
     impl Debug;
     /// When this bit is set, the WAV_FRM_SEQ[6:0] bit is interpreted as a wait
@@ -463,7 +507,7 @@ impl WaveformReg {
     }
 }
 
-bitfield!{
+bitfield! {
     pub struct GoReg(u8);
     impl Debug;
     /// This bit is used to fire processes in the DRV2605 device. The process
@@ -479,7 +523,7 @@ bitfield!{
     pub go, set_go: 0;
 }
 
-bitfield!{
+bitfield! {
     pub struct FeedbackControlReg(u8);
     impl Debug;
 
@@ -534,7 +578,18 @@ bitfield!{
     pub bemf_gain, set_bemf_gain: 1, 0;
 }
 
-bitfield!{
+impl Default for FeedbackControlReg {
+    fn default() -> Self {
+        let mut reg = Self(0);
+        reg.set_n_erm_lra(false);
+        reg.set_fb_brake_factor(0x3);
+        reg.set_loop_gain(0x1);
+        reg.set_bemf_gain(0x2);
+        reg
+    }
+}
+
+bitfield! {
     pub struct Control1Reg(u8);
     impl Debug;
     /// This bit applies higher loop gain during overdrive to enhance actuator transient response.
@@ -558,7 +613,17 @@ bitfield!{
     pub drive_time, set_drive_time: 4, 0;
 }
 
-bitfield!{
+impl Default for Control1Reg {
+    fn default() -> Self {
+        let mut reg = Self(0);
+        reg.set_startup_boost(true);
+        reg.set_ac_couple(false);
+        reg.set_drive_time(0x13);
+        reg
+    }
+}
+
+bitfield! {
     pub struct Control2Reg(u8);
     impl Debug;
     /// The BIDIR_INPUT bit selects how the engine interprets data.
@@ -606,7 +671,19 @@ bitfield!{
     pub idiss_time, set_idiss_time: 1, 0;
 }
 
-bitfield!{
+impl Default for Control2Reg {
+    fn default() -> Self {
+        let mut reg = Self(0);
+        reg.set_bidir_input(true);
+        reg.set_brake_stabilizer(true);
+        reg.set_sample_time(0x3);
+        reg.set_blanking_time(0x1);
+        reg.set_idiss_time(0x1);
+        reg
+    }
+}
+
+bitfield! {
     pub struct Control3Reg(u8);
     impl Debug;
 
@@ -660,9 +737,31 @@ bitfield!{
     pub lra_open_loop, set_lra_open_loop: 0;
 }
 
-bitfield!{
+impl Default for Control3Reg {
+    fn default() -> Self {
+        let mut reg = Self(0);
+        reg.set_ng_thresh(0x2);
+        reg.set_erm_open_loop(true);
+        reg.set_supply_comp_dis(false);
+        reg.set_data_format_rtp(false);
+        reg.set_lra_drive_mode(false);
+        reg.set_n_pwm_analog(false);
+        reg.set_lra_open_loop(false);
+        reg
+    }
+}
+
+bitfield! {
     pub struct Control4Reg(u8);
     impl Debug;
+
+    /// This bit sets the minimum length of time devoted for detecting a zero crossing.
+    /// (advanced use only). Only documented on l models?
+    /// 0: 100 us (Default)
+    /// 1: 200 us
+    /// 2: 300 us
+    /// 3: 390 us
+    pub zc_det_time, set_zc_det_time: 7, 6;
 
     /// This bit sets the length of the auto calibration time. The AUTO_CAL_TIME[1:0]
     /// bit should be enough time for the motor acceleration to settle when driven at the
@@ -683,6 +782,15 @@ bitfield!{
     /// nonvolatile memory. This process can only be executed one time per device.
     /// See the Programming On-Chip OTP Memory section for details.
     pub otp_program, set_otp_program: 1;
+}
+
+impl Default for Control4Reg {
+    fn default() -> Self {
+        let mut reg = Self(0);
+        reg.set_auto_cal_time(0x2);
+        reg.set_otp_program(false);
+        reg
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -760,82 +868,347 @@ pub enum Register {
     Control4 = 0x1e,
 }
 
-/// The hard-coded address of the driver.  All drivers share the same
+pub struct HapticBuilder<I2C, DEV> {
+    rated: RatedVoltageReg,
+    clamp: OverdriveClampReg,
+    ctrl1: Control1Reg,
+    ctrl2: Control2Reg,
+    ctrl4: Control4Reg,
+
+    otp: Option<bool>,
+    open_loop: Option<bool>,
+    auto_calibrate: Option<bool>,
+
+    comp: AutoCalibrationCompensationReg,
+    bemf: AutoCalibrationCompensationBackEmfReg,
+    feedback: FeedbackControlReg,
+
+    _i2c: core::marker::PhantomData<I2C>,
+    _dev: core::marker::PhantomData<DEV>,
+}
+
+impl<DEV, I2C, E> HapticBuilder<I2C, DEV>
+where
+    DEV: DrvConfig,
+    I2C: WriteRead<Error = E> + Write<Error = E>,
+{
+    /// only need inputs if lra I think? and if auto calibrating
+    pub fn new(rated: u8, clamp: u8, drive_time: u8) -> Self {
+        let mut haptic = HapticBuilder::<I2C, DEV>::default();
+        haptic.ctrl1.set_drive_time(drive_time);
+        haptic.rated = RatedVoltageReg(rated);
+        haptic.clamp = OverdriveClampReg(clamp);
+        haptic
+    }
+
+    /// Finish building the simulated RGB display and open an SDL window to render it into
+    pub fn auto_calibrate(&mut self, auto_calibrate: bool) -> &mut Self {
+        self.auto_calibrate = Some(auto_calibrate);
+        self
+    }
+
+    /// Finish building the simulated RGB display and open an SDL window to render it into
+    pub fn set_open_loop(&mut self, open: bool) -> &mut Self {
+        //todo.. is this good?
+        self.open_loop = Some(open);
+        self
+    }
+
+    /// Finish building the simulated RGB display and open an SDL window to render it into
+    pub fn otp(&mut self, otp: bool) -> &mut Self {
+        //todo.. is this good?
+        self.auto_calibrate = Some(!otp);
+        self.otp = Some(otp);
+        self
+    }
+
+    pub fn load_calibration(&mut self, comp: u8, bemf: u8, gain: u8) -> &mut Self {
+        self.feedback.set_bemf_gain(gain);
+        self.comp = AutoCalibrationCompensationReg(comp);
+        self.bemf = AutoCalibrationCompensationBackEmfReg(bemf);
+
+        //todo.. is this good?
+        self.auto_calibrate = Some(false);
+
+        self
+    }
+
+    pub fn auto_calibration(
+        &mut self,
+        brake_factor: u8,
+        loop_gain: u8,
+        lra_sample_time: u8,
+        lra_blanking_time: u8,
+        lra_idiss_time: u8,
+        auto_cal_time: u8,
+        lra_zc_det_time: u8,
+    ) -> &mut Self {
+        self.feedback.set_fb_brake_factor(brake_factor);
+        self.feedback.set_loop_gain(loop_gain);
+        self.ctrl2.set_sample_time(lra_sample_time);
+        self.ctrl2.set_blanking_time(lra_blanking_time);
+        self.ctrl2.set_idiss_time(lra_idiss_time);
+        self.ctrl4.set_auto_cal_time(auto_cal_time);
+        self.ctrl4.set_zc_det_time(lra_zc_det_time);
+
+        //todo.. is this good?
+        self.auto_calibrate = Some(true);
+
+        self
+    }
+
+    /// Finish building the simulated RGB display and open an SDL window to render it into
+    pub fn connect(&self, i2c: I2C) -> Result<Drv2605<I2C, DEV>, DrvError<E>> {
+        let mut haptic: Drv2605<I2C, DEV> = Drv2605::<I2C, DEV>::new(i2c);
+
+        haptic.check_id(DEV::ID)?;
+
+        //.. just to be conservative?
+        // self.reset()?;
+        //todo wait some amount of time??? probably going to break here
+
+        haptic.write(Register::Control1, self.ctrl1.0)?;
+        haptic.write(Register::Control2, self.ctrl2.0)?;
+        //todo who and when did we figure out between open/closed loop?
+
+        let ctrl3: Control3Reg = Default::default();
+        haptic.write(Register::Control3, ctrl3.0)?;
+
+        haptic.write(Register::Control4, self.ctrl4.0)?;
+
+        haptic.write(Register::RatedVoltage, self.rated.0)?;
+        haptic.write(Register::OverdriveClampVoltage, self.clamp.0)?;
+
+        //todo who and when did we figure out between lra and erm here?
+        haptic.write(Register::FeedbackControl, self.feedback.0)?;
+
+        //may or may not be set. could put in if statement.. but who cares?
+        haptic.write(Register::AutoCalibrationCompensationResult, self.comp.0)?;
+        haptic.write(Register::AutoCalibrationBackEMFResult, self.bemf.0)?;
+
+        haptic.diagnostics()?;
+
+        if self.auto_calibrate.unwrap() {
+            haptic.calibrate()?;
+        } else if self.otp.unwrap() {
+            if !Control4Reg(haptic.read(Register::Control4)?).otp_status() {
+                return Err(DrvError::OTPError);
+            }
+        }
+
+        haptic.set_standby(true)?;
+
+        Ok(haptic)
+    }
+}
+
+impl<DEV, I2C, E> Default for HapticBuilder<I2C, DEV>
+where
+    DEV: DrvConfig,
+    I2C: WriteRead<Error = E> + Write<Error = E>,
+{
+    fn default() -> Self {
+        Self {
+            rated: Default::default(),
+            clamp: Default::default(),
+            ctrl1: Default::default(),
+            ctrl2: Default::default(),
+            ctrl4: Default::default(),
+
+            otp: None,
+            open_loop: None,
+            auto_calibrate: None,
+
+            comp: Default::default(),
+            bemf: Default::default(),
+            feedback: Default::default(),
+
+            _i2c: core::marker::PhantomData,
+            _dev: core::marker::PhantomData,
+        }
+    }
+}
+
+/// The hardcoded address of the driver.  All drivers share the same
 /// address so that it is possible to broadcast on the bus and have
 /// multiple units emit the same waveform
 pub const ADDRESS: u8 = 0x5a;
 
-pub struct Drv2605<I2C>
-where
-    I2C: WriteRead + Write,
-{
-    i2c: I2C,
+//todo encode open and closed loop in state
+pub struct Drv2605Erm;
+pub struct Drv2605Lra;
+pub struct Drv2604Lra;
+pub struct Drv2604Erm;
+pub struct Drv2605lErm;
+pub struct Drv2605lLra;
+pub struct Drv2604lErm;
+pub struct Drv2604lLra;
+
+pub trait DrvConfig {
+    const ID: u8;
 }
 
-impl<I2C, E> Drv2605<I2C>
+impl DrvConfig for Drv2605Erm {
+    const ID: u8 = 3;
+}
+impl DrvConfig for Drv2605Lra {
+    const ID: u8 = 3;
+}
+impl DrvConfig for Drv2604Erm {
+    const ID: u8 = 4;
+}
+impl DrvConfig for Drv2604Lra {
+    const ID: u8 = 4;
+}
+impl DrvConfig for Drv2604lErm {
+    const ID: u8 = 6;
+}
+impl DrvConfig for Drv2604lLra {
+    const ID: u8 = 6;
+}
+impl DrvConfig for Drv2605lErm {
+    const ID: u8 = 7;
+}
+impl DrvConfig for Drv2605lLra {
+    const ID: u8 = 7;
+}
+
+pub struct Drv2605<I2C, DEV> {
+    i2c: I2C,
+    marker: core::marker::PhantomData<DEV>,
+}
+
+#[derive(Debug)]
+pub enum DrvError<E> {
+    DeviceIdError,
+    ConnectionError(E),
+    DeviceDiagError,
+    CalibrationError,
+    OTPError,
+}
+
+//todo how to implement these functions for all 2605x chips?
+impl<I2C, E> Drv2605<I2C, Drv2605Erm>
 where
     I2C: WriteRead<Error = E> + Write<Error = E>,
 {
-    /// Construct a driver instance, but don't do any initialization
-    pub fn new(i2c: I2C) -> Self {
-        Self { i2c }
+    /// Selects the library the playback engine selects when the GO bit is set.
+    pub fn set_library(&mut self, value: LibrarySelection) -> Result<(), DrvError<E>> {
+        let mut register = RegisterThree(self.read(Register::Register3)?);
+        register.set_library_selection(value as u8);
+        self.write(Register::Register3, register.0)
     }
 
-    pub fn init_open_loop_erm(&mut self) -> Result<(), E> {
-        self.set_standby(false)?;
-        self.set_realtime_playback_input(0)?;
-        self.set_waveform(&[
-            WaveformReg::new_effect(Effect::StrongClick100),
-            WaveformReg::new_stop(),
-            WaveformReg::new_stop(),
-            WaveformReg::new_stop(),
-            WaveformReg::new_stop(),
-            WaveformReg::new_stop(),
-            WaveformReg::new_stop(),
-            WaveformReg::new_stop(),
-        ])?;
+    /// Sets the waveform generation registers to the shape provided
+    pub fn set_waveform(&mut self, waveform: &[WaveformReg; 8]) -> Result<(), DrvError<E>> {
+        let buf: [u8; 9] = [
+            Register::WaveformSequence0 as u8,
+            waveform[0].0,
+            waveform[1].0,
+            waveform[2].0,
+            waveform[3].0,
+            waveform[4].0,
+            waveform[5].0,
+            waveform[6].0,
+            waveform[7].0,
+        ];
+        self.i2c
+            .write(ADDRESS, &buf)
+            .map_err(DrvError::ConnectionError)
+    }
 
-        let mut feedback = FeedbackControlReg(self.read(Register::FeedbackControl)?);
-        feedback.set_n_erm_lra(false);
-        self.write(Register::FeedbackControl, feedback.0)?;
+    pub fn set_single_effect(&mut self, effect: Effect) -> Result<(), DrvError<E>> {
+        let buf: [u8; 3] = [
+            Register::WaveformSequence0 as u8,
+            WaveformReg::new_effect(effect).0,
+            WaveformReg::new_stop().0,
+        ];
+        self.i2c
+            .write(ADDRESS, &buf)
+            .map_err(DrvError::ConnectionError)
+    }
+}
+/// Operations that are valid only in Drv2605Lra state.
+impl<I2C, E> Drv2605<I2C, Drv2605Lra>
+where
+    I2C: WriteRead<Error = E> + Write<Error = E>,
+{
+    // pub fn set_open_loop(&mut self) -> Result<(), DrvError<E>> {
+    //     let mut control3 = Control3Reg(self.read(Register::Control3)?);
+    //     control3.set_lra_open_loop(true);
+    //     self.write(Register::Control3, control3.0)
+    // }
 
-        let mut control3 = Control3Reg(self.read(Register::Control3)?);
-        control3.set_erm_open_loop(true);
-        self.write(Register::Control3, control3.0)?;
+    // pub fn config(&mut self) -> Result<(), DrvError<E>> {
+    //     self.check_id(Drv2605Lra::ID)?;
+
+    //     let mut feedback = FeedbackControlReg(self.read(Register::FeedbackControl)?);
+    //     feedback.set_n_erm_lra(true);
+    //     self.write(Register::FeedbackControl, feedback.0)?;
+
+    //     self.diagnostics()?;
+
+    //     self.set_standby(true)
+    // }
+}
+
+impl<DEV, I2C, E> Drv2605<I2C, DEV>
+where
+    DEV: DrvConfig,
+    I2C: WriteRead<Error = E> + Write<Error = E>,
+{
+    fn check_id(&mut self, id: u8) -> Result<(), DrvError<E>> {
+        let reg = self.get_status()?;
+        if reg.device_id() != id {
+            return Err(DrvError::DeviceIdError);
+        }
+
         Ok(())
     }
 
+    /// Construct a driver instance, but don't do any initialization
+    pub fn new(i2c: I2C) -> Self {
+        Self {
+            i2c,
+            marker: core::marker::PhantomData,
+        }
+    }
+
     /// Write `value` to `register`
-    fn write(&mut self, register: Register, value: u8) -> Result<(), E> {
-        self.i2c.write(ADDRESS, &[register as u8, value])
+    fn write(&mut self, register: Register, value: u8) -> Result<(), DrvError<E>> {
+        self.i2c
+            .write(ADDRESS, &[register as u8, value])
+            .map_err(DrvError::ConnectionError)
     }
 
     /// Read an 8-bit value from the register
-    fn read(&mut self, register: Register) -> Result<u8, E> {
+    fn read(&mut self, register: Register) -> Result<u8, DrvError<E>> {
         let mut buf = [0u8; 1];
-        self.i2c.write_read(ADDRESS, &[register as u8], &mut buf)?;
+        self.i2c
+            .write_read(ADDRESS, &[register as u8], &mut buf)
+            .map_err(DrvError::ConnectionError)?;
         Ok(buf[0])
     }
 
-    pub fn get_status(&mut self) -> Result<StatusReg, E> {
+    pub fn get_status(&mut self) -> Result<StatusReg, DrvError<E>> {
         self.read(Register::Status).map(StatusReg)
     }
 
-    pub fn get_mode(&mut self) -> Result<ModeReg, E> {
+    pub fn get_mode(&mut self) -> Result<ModeReg, DrvError<E>> {
         self.read(Register::Mode).map(ModeReg)
     }
 
     /// performs the equivalent operation of power
     /// cycling the device. Any playback operations are immediately interrupted,
     /// and all registers are reset to the default values.
-    pub fn reset(&mut self) -> Result<(), E> {
+    pub fn reset(&mut self) -> Result<(), DrvError<E>> {
         let mut mode = ModeReg(0);
         mode.set_dev_reset(true);
         self.write(Register::Mode, mode.0)
     }
 
     /// Put the device into standby mode, or wake it up from standby
-    pub fn set_standby(&mut self, standby: bool) -> Result<(), E> {
+    pub fn set_standby(&mut self, standby: bool) -> Result<(), DrvError<E>> {
         let mut mode = ModeReg(self.read(Register::Mode)?);
         mode.set_standby(standby);
         self.write(Register::Mode, mode.0)
@@ -849,7 +1222,7 @@ where
     /// unsigned by the DATA_FORMAT_RTP bit in register 0x1D. When the
     /// haptic waveform is complete, the user can idle the device by setting
     /// MODE[2:0] = 0, or alternatively by setting STANDBY = 1.
-    pub fn set_realtime_playback_input(&mut self, value: i8) -> Result<(), E> {
+    pub fn set_realtime_playback_input(&mut self, value: i8) -> Result<(), DrvError<E>> {
         self.write(Register::RealTimePlaybackInput, value as u8)
     }
 
@@ -858,42 +1231,10 @@ where
     /// shutdown or standby mode, the output drivers have 15 kΩ to ground. When
     /// the HI_Z bit is asserted, the hi-Z functionality takes effect immediately, even
     /// if a transaction is taking place.
-    pub fn set_high_impedance_state(&mut self, value: bool) -> Result<(), E> {
+    pub fn set_high_impedance_state(&mut self, value: bool) -> Result<(), DrvError<E>> {
         let mut register = RegisterThree(self.read(Register::Register3)?);
         register.set_hi_z(value);
         self.write(Register::Register3, register.0)
-    }
-
-    /// Selects the library the playback engine selects when the GO bit is set.
-    pub fn set_library(&mut self, value: LibrarySelection) -> Result<(), E> {
-        let mut register = RegisterThree(self.read(Register::Register3)?);
-        register.set_library_selection(value as u8);
-        self.write(Register::Register3, register.0)
-    }
-
-    /// Sets the waveform generation registers to the shape provided
-    pub fn set_waveform(&mut self, waveform: &[WaveformReg; 8]) -> Result<(), E> {
-        let buf: [u8; 9] = [
-            Register::WaveformSequence0 as u8,
-            waveform[0].0,
-            waveform[1].0,
-            waveform[2].0,
-            waveform[3].0,
-            waveform[4].0,
-            waveform[5].0,
-            waveform[6].0,
-            waveform[7].0,
-        ];
-        self.i2c.write(ADDRESS, &buf)
-    }
-
-    pub fn set_single_effect(&mut self, effect: Effect) -> Result<(), E> {
-        let buf: [u8; 3] = [
-            Register::WaveformSequence0 as u8,
-            WaveformReg::new_effect(effect).0,
-            WaveformReg::new_stop().0,
-        ];
-        self.i2c.write(ADDRESS, &buf)
     }
 
     /// This bit is used to fire processes in the DRV2605 device. The process
@@ -906,7 +1247,7 @@ where
     /// waveform sequence. Using one of the external trigger modes can cause
     /// the GO bit to be set or cleared by the external trigger pin. This bit can also
     /// be used to fire the auto-calibration process or the diagnostic process.
-    pub fn set_go(&mut self, go: bool) -> Result<(), E> {
+    pub fn set_go(&mut self, go: bool) -> Result<(), DrvError<E>> {
         let mut register = GoReg(self.read(Register::Go)?);
         register.set_go(go);
         self.write(Register::Go, register.0)
@@ -922,7 +1263,7 @@ where
     /// positive or negative.
     /// Overdrive Time Offset (ms) = ODT[7:0] × PLAYBACK_INTERVAL
     /// See the section for PLAYBACK_INTERVAL details.
-    pub fn set_overdrive_time_offset(&mut self, value: i8) -> Result<(), E> {
+    pub fn set_overdrive_time_offset(&mut self, value: i8) -> Result<(), DrvError<E>> {
         self.write(Register::OverdriveTimeOffset, value as u8)
     }
 
@@ -934,7 +1275,7 @@ where
     /// interpreted as 2s complement, so the time offset can positive or negative.
     /// Sustain-Time Positive Offset (ms) = SPT[7:0] × PLAYBACK_INTERVAL
     /// See the section for PLAYBACK_INTERVAL details.
-    pub fn set_sustain_time_offset_positive(&mut self, value: i8) -> Result<(), E> {
+    pub fn set_sustain_time_offset_positive(&mut self, value: i8) -> Result<(), DrvError<E>> {
         self.write(Register::SustainTimeOffsetPositive, value as u8)
     }
 
@@ -947,7 +1288,7 @@ where
     /// negative.
     /// Sustain-Time Negative Offset (ms) = SNT[7:0] × PLAYBACK_INTERVAL
     /// See the section for PLAYBACK_INTERVAL details.
-    pub fn set_sustain_time_offset_negative(&mut self, value: i8) -> Result<(), E> {
+    pub fn set_sustain_time_offset_negative(&mut self, value: i8) -> Result<(), DrvError<E>> {
         self.write(Register::SustainTimeOffsetNegative, value as u8)
     }
 
@@ -960,7 +1301,55 @@ where
     /// 2s complement, so the time offset can be positive or negative.
     /// Brake Time Offset (ms) = BRT[7:0] × PLAYBACK_INTERVAL
     /// See the section for PLAYBACK_INTERVAL details.
-    pub fn set_brake_time_offset(&mut self, value: i8) -> Result<(), E> {
+    pub fn set_brake_time_offset(&mut self, value: i8) -> Result<(), DrvError<E>> {
         self.write(Register::BrakeTimeOffset, value as u8)
+    }
+
+    pub fn load_calibration(&mut self, comp: u8, bemf: u8, gain: u8) -> Result<(), DrvError<E>> {
+        let mut fbcr = FeedbackControlReg(self.read(Register::FeedbackControl)?);
+        fbcr.set_bemf_gain(gain);
+        self.write(Register::AutoCalibrationCompensationResult, fbcr.0)?;
+
+        self.write(Register::AutoCalibrationCompensationResult, comp)?;
+
+        self.write(Register::AutoCalibrationBackEMFResult, bemf)
+    }
+
+    pub fn diagnostics(&mut self) -> Result<(), DrvError<E>> {
+        let mut mode = ModeReg(self.read(Register::Mode)?);
+        mode.set_standby(false);
+        mode.set_mode(6);
+        self.write(Register::Mode, mode.0)?;
+
+        self.set_go(true)?;
+
+        //todo timeout
+        while GoReg(self.read(Register::Go)?).go() {}
+
+        let reg = self.get_status()?;
+        if reg.diagnostic_result() {
+            return Err(DrvError::DeviceDiagError);
+        }
+
+        Ok(())
+    }
+
+    pub fn calibrate(&mut self) -> Result<(), DrvError<E>> {
+        let mut mode = ModeReg(self.read(Register::Mode)?);
+        mode.set_standby(false);
+        mode.set_mode(7);
+        self.write(Register::Mode, mode.0)?;
+
+        self.set_go(true)?;
+
+        //todo timeout
+        while GoReg(self.read(Register::Go)?).go() {}
+
+        let reg = self.get_status()?;
+        if reg.diagnostic_result() {
+            return Err(DrvError::DeviceDiagError);
+        }
+
+        Ok(())
     }
 }

@@ -3,23 +3,17 @@
 // to build for the metro_m0
 #![no_std]
 #![no_main]
-#![feature(used)]
 
-extern crate cortex_m;
-extern crate jlink_rtt;
 extern crate metro_m0 as hal;
 extern crate panic_rtt;
 
-#[macro_use(entry)]
-extern crate cortex_m_rt;
-
-extern crate drv2605;
-use drv2605::{Drv2605, Effect};
-
+use cortex_m_rt::entry;
+use drv2605::{Drv2605, Drv2605Erm, HapticBuilder};
 use hal::clock::GenericClockController;
 use hal::delay::Delay;
 use hal::prelude::*;
 use hal::{CorePeripherals, Peripherals};
+use jlink_rtt;
 
 macro_rules! dbgprint {
     ($($arg:tt)*) => {
@@ -31,8 +25,7 @@ macro_rules! dbgprint {
     };
 }
 
-entry!(main);
-
+#[entry]
 fn main() -> ! {
     let mut peripherals = Peripherals::take().unwrap();
     let core = CorePeripherals::take().unwrap();
@@ -56,14 +49,13 @@ fn main() -> ! {
         &mut pins.port,
     );
 
-    let mut haptic = Drv2605::new(i2c);
     dbgprint!("about to init device");
-    dbgprint!("init say: {:?}", haptic.init_open_loop_erm());
 
-    dbgprint!(
-        "set effect: {:?}",
-        haptic.set_single_effect(Effect::TransitionRampDownLongSmoothOne100to0)
-    );
+    let mut haptic: Drv2605<_, Drv2605Erm> = HapticBuilder::new(0x3E, 0x89, 19)
+        .load_calibration(0x09, 0x79, 1) //or .otp() or nothing for auto_calibration()
+        // .set_open_loop()
+        .connect(i2c)
+        .unwrap();
 
     loop {
         for _ in 0..10 {

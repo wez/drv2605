@@ -8,17 +8,21 @@ description = "A platform agnostic driver for the drv2605 haptic driver"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/wez/drv2605"
+edition = "2018"
 
 [dependencies]
 embedded-hal = "~0.2"
 bitfield = "~0.13"
 
+
 [dev-dependencies]
-metro_m0 = { version="0.1.0", path = "../atsamd21-rs/metro_m0" }
-cortex-m = "~0.5"
-panic_rtt = "~0.1"
-cortex-m-rt = "~0.5"
+metro_m0 = "0.2.0"
+cortex-m = "~0.6"
+panic_rtt = "~0.2"
 jlink_rtt = "~0.1"
+
+[dev-dependencies.cortex-m-rt]
+version = "~0.6"
 
 [features]
 use_semihosting = []
