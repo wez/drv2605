@@ -8,7 +8,7 @@ extern crate metro_m0 as hal;
 extern crate panic_rtt;
 
 use cortex_m_rt::entry;
-use drv2605::{Drv2605, Drv2605Erm, Effect};
+use drv2605::{Drv2605, Drv2605Erm, HapticBuilder};
 use hal::clock::GenericClockController;
 use hal::delay::Delay;
 use hal::prelude::*;
@@ -49,14 +49,12 @@ fn main() -> ! {
         &mut pins.port,
     );
 
-    let mut haptic = Drv2605::<_, Drv2605Erm>::new(i2c);
     dbgprint!("about to init device");
 
-    haptic.config().unwrap();
-    haptic.set_open_loop().unwrap();
-    haptic.set_library(drv2605::LibrarySelection::B).unwrap();
-    haptic
-        .set_single_effect(Effect::TransitionRampDownLongSmoothOne100to0)
+    let mut haptic: Drv2605<_, Drv2605Erm> = HapticBuilder::new(0x3E, 0x89, 19)
+        .load_calibration(0x09, 0x79, 1) //or .otp() or nothing for auto_calibration()
+        // .set_open_loop()
+        .connect(i2c)
         .unwrap();
 
     loop {
