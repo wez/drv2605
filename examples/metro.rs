@@ -8,7 +8,7 @@ extern crate metro_m0 as hal;
 extern crate panic_rtt;
 
 use cortex_m_rt::entry;
-use drv2605::{Drv2605l, Effect, ErmCalibration, ErmLibrary, LoadParams};
+use drv2605::{Drv2605l, Effect, ErmCalibration, Library, LoadParams};
 use hal::clock::GenericClockController;
 use hal::delay::Delay;
 use hal::prelude::*;
@@ -84,7 +84,7 @@ fn main() -> ! {
 
     // rom mode using built in effects, choose the correct ErmLibrary for your
     // motor characteristics
-    haptic.set_mode_rom(ErmLibrary::B).unwrap();
+    haptic.set_mode_rom(Library::B).unwrap();
 
     // set one effect to happen when go bit enabled
     haptic

@@ -1,8 +1,8 @@
 #![no_std]
 
 mod registers;
-pub use crate::registers::Effect;
 use crate::registers::*;
+pub use crate::registers::{Effect, Library};
 use embedded_hal::blocking::i2c::{Write, WriteRead};
 
 pub struct Drv2605l<I2C, E>
@@ -114,7 +114,10 @@ where
 
     /// Select the Immersion TS2200 library that matches your motor
     /// characteristic. Afterwards set the rom(s) and thn GO bit to play
-    pub fn set_mode_rom(&mut self, value: ErmLibrary) -> Result<(), DrvError> {
+    pub fn set_mode_rom(&mut self, library: Library) -> Result<(), DrvError> {
+        if !self.lra && library == Library::Lra {
+            return Err(DrvError::WrongMotorType);
+        }
         let mut mode = ModeReg(self.read(Register::Mode)?);
         mode.set_mode(Mode::InternalTrigger as u8);
         self.write(Register::Mode, mode.0)?;
@@ -128,7 +131,7 @@ where
         }
 
         let mut register = RegisterThree(self.read(Register::Register3)?);
-        register.set_library_selection(value as u8);
+        register.set_library_selection(library as u8);
         self.write(Register::Register3, register.0)
     }
 
@@ -443,6 +446,7 @@ where
 #[allow(unused)]
 #[derive(Debug)]
 pub enum DrvError {
+    WrongMotorType,
     WrongDeviceId,
     ConnectionError,
     DeviceDiagnosticFailed,
@@ -494,55 +498,6 @@ pub struct LraParams {
     pub rated: u8,
     pub clamp: u8,
     pub drive_time: u8,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum ErmLibrary {
-    Empty = 0,
-    /// Rated Voltage 1.3V Overdrive Voltage 3V Rise Time 40-60ms Brake Time 20-40ms
-    A = 1,
-    /// Rated Voltage 3V Overdrive Voltage 3V Rise Time 40-60ms Brake Time 5-15ms
-    B = 2,
-    /// Rated Voltage 3V Overdrive Voltage 3V Rise Time 60-80ms Brake Time 10-20ms
-    C = 3,
-    /// Rated Voltage 3V Overdrive Voltage 3V Rise Time 100-140ms Brake Time 15-25ms
-    D = 4,
-    /// Rated Voltage 3V Overdrive Voltage 3V Rise Time >140ms Brake Time >30ms
-    E = 5,
-    /// Rated Voltage 4.5V Overdrive Voltage 5V Rise Time 35-45ms Brake Time 10-20ms
-    F = 7,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum LraLibrary {
-    Empty = 0,
-    /// Rated Voltage 3V Overdrive Voltage 3V Rise Time >140ms Brake Time >30ms
-    Lra = 6,
-}
-
-impl From<u8> for LraLibrary {
-    fn from(val: u8) -> Self {
-        match val {
-            0 => Self::Empty,
-            6 => Self::Lra,
-            _ => unreachable!("impossible LibrarySelection value"),
-        }
-    }
-}
-
-impl From<u8> for ErmLibrary {
-    fn from(val: u8) -> Self {
-        match val {
-            0 => Self::Empty,
-            1 => Self::A,
-            2 => Self::B,
-            3 => Self::C,
-            4 => Self::D,
-            5 => Self::E,
-            7 => Self::F,
-            _ => unreachable!("impossible LibrarySelection value"),
-        }
-    }
 }
 
 impl Default for GeneralParams {

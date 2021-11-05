@@ -155,30 +155,38 @@ impl Default for ModeReg {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum LibrarySelection {
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Library {
+    // No library selected
     Empty = 0,
+    /// Rated Voltage 1.3V Overdrive Voltage 3V Rise Time 40-60ms Brake Time 20-40ms
     A = 1,
+    /// Rated Voltage 3V Overdrive Voltage 3V Rise Time 40-60ms Brake Time 5-15ms
     B = 2,
+    /// Rated Voltage 3V Overdrive Voltage 3V Rise Time 60-80ms Brake Time 10-20ms
     C = 3,
+    /// Rated Voltage 3V Overdrive Voltage 3V Rise Time 100-140ms Brake Time 15-25ms
     D = 4,
+    /// Rated Voltage 3V Overdrive Voltage 3V Rise Time >140ms Brake Time >30ms
     E = 5,
+    /// Rated Voltage 3V Overdrive Voltage 3V Rise Time >140ms Brake Time >30ms
     Lra = 6,
+    /// Rated Voltage 4.5V Overdrive Voltage 5V Rise Time 35-45ms Brake Time 10-20ms
     Reserved = 7,
 }
 
-impl From<u8> for LibrarySelection {
-    fn from(val: u8) -> LibrarySelection {
+impl From<u8> for Library {
+    fn from(val: u8) -> Library {
         match val {
-            0 => LibrarySelection::Empty,
-            1 => LibrarySelection::A,
-            2 => LibrarySelection::B,
-            3 => LibrarySelection::C,
-            4 => LibrarySelection::D,
-            5 => LibrarySelection::E,
-            6 => LibrarySelection::Lra,
-            7 => LibrarySelection::Reserved,
-            _ => unreachable!("impossible LibrarySelection value"),
+            0 => Library::Empty,
+            1 => Library::A,
+            2 => Library::B,
+            3 => Library::C,
+            4 => Library::D,
+            5 => Library::E,
+            6 => Library::Lra,
+            7 => Library::Reserved,
+            _ => unreachable!("impossible Library value"),
         }
     }
 }
@@ -195,7 +203,7 @@ bitfield! {
 
     /// Waveform library selection value. This bit determines which library the
     /// playback engine selects when the GO bit is set.
-    pub into LibrarySelection, library_selection, set_library_selection: 2, 0;
+    pub into Library, library_selection, set_library_selection: 2, 0;
 }
 
 /// Identifies which of the waveforms from the ROM library that should
