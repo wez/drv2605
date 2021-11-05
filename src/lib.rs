@@ -90,19 +90,19 @@ where
 
                 feedback.set_fb_brake_factor(c.brake_factor);
                 feedback.set_loop_gain(c.loop_gain);
-                ctrl1.set_drive_time(c_lra.drive_time);
                 ctrl2.set_sample_time(c.lra_sample_time);
                 ctrl2.set_blanking_time(c.lra_blanking_time);
                 ctrl2.set_idiss_time(c.lra_idiss_time);
                 ctrl4.set_auto_cal_time(c.auto_cal_time);
                 ctrl4.set_zc_det_time(c.lra_zc_det_time);
+                ctrl1.set_drive_time(c_lra.drive_time);
 
                 haptic.write(Register::FeedbackControl, feedback.0)?;
+                haptic.write(Register::Control2, ctrl2.0)?;
+                haptic.write(Register::Control4, ctrl4.0)?;
                 haptic.write(Register::RatedVoltage, c_lra.rated)?;
                 haptic.write(Register::OverdriveClampVoltage, c_lra.clamp)?;
                 haptic.write(Register::Control1, ctrl1.0)?;
-                haptic.write(Register::Control2, ctrl2.0)?;
-                haptic.write(Register::Control4, ctrl4.0)?;
                 haptic.calibrate()?;
             }
         }
@@ -130,9 +130,9 @@ where
             self.set_open_loop(false)?;
         }
 
-        let mut register = RegisterThree(self.read(Register::Register3)?);
+        let mut register = LibrarySelectionReg(self.read(Register::LibrarySelection)?);
         register.set_library_selection(library as u8);
-        self.write(Register::Register3, register.0)
+        self.write(Register::LibrarySelection, register.0)
     }
 
     /// Sets up to 8 Effects to play in order when `set_go` is called. Stops
@@ -329,9 +329,9 @@ where
     /// ground. When the HI_Z bit is asserted, the hi-Z functionality takes
     /// effect immediately, even if a transaction is taking place.
     fn set_high_impedance_state(&mut self, value: bool) -> Result<(), DrvError> {
-        let mut register = RegisterThree(self.read(Register::Register3)?);
+        let mut register = LibrarySelectionReg(self.read(Register::LibrarySelection)?);
         register.set_hi_z(value);
-        self.write(Register::Register3, register.0)
+        self.write(Register::LibrarySelection, register.0)
     }
 
     /// This bit adds a time offset to the overdrive portion of the library
@@ -461,23 +461,35 @@ pub enum DrvError {
 pub const ADDRESS: u8 = 0x5a;
 
 pub enum LraCalibration {
+    // Values were previously programmed into nonvolatile memory
     Otp,
     /// When using autocalibration be sure to secure the motor to mass. It can't
     /// calibrate if its jumping around on a board or a desk.
     Auto(GeneralParams, LraParams),
+    // Load previously calibrated values
     Load(LoadParams),
 }
 
+// Choose calibration method during driver construction
 pub enum ErmCalibration {
+    // Values were previously programmed into nonvolatile memory
     Otp,
     /// When using autocalibration be sure to secure the motor to mass. It can't
     /// calibrate if its jumping around on a board or a desk.
     Auto(GeneralParams),
+    // Load previously calibrated values
     Load(LoadParams),
 }
+
+// Computed calibration parameters. Provide previously calculated parameters
+// during construction, or after construction with Auto calibration, read thes
+// back and then hardcode them
 pub struct LoadParams {
+    // Automatic Compensation for Resistive Losses
     pub comp: u8,
+    // Auto-Calibration Back-EMF Result
     pub bemf: u8,
+    // Auto-Calibration BEMF_GAIN Result
     pub gain: u8,
 }
 

@@ -114,7 +114,7 @@ pub struct RatedVoltageReg(pub u8);
 
 impl Default for RatedVoltageReg {
     fn default() -> Self {
-        Self(0x3f)
+        Self(0x3E)
     }
 }
 
@@ -123,7 +123,7 @@ pub struct OverdriveClampReg(pub u8);
 
 impl Default for OverdriveClampReg {
     fn default() -> Self {
-        Self(0x89)
+        Self(0x8C)
     }
 }
 
@@ -132,7 +132,7 @@ pub struct AutoCalibrationCompensationReg(pub u8);
 
 impl Default for AutoCalibrationCompensationReg {
     fn default() -> Self {
-        Self(0x0D)
+        Self(0x0C)
     }
 }
 
@@ -141,7 +141,7 @@ pub struct AutoCalibrationCompensationBackEmfReg(pub u8);
 
 impl Default for AutoCalibrationCompensationBackEmfReg {
     fn default() -> Self {
-        Self(0x6D)
+        Self(0x6C)
     }
 }
 
@@ -192,7 +192,7 @@ impl From<u8> for Library {
 }
 
 bitfield! {
-    pub struct RegisterThree(u8);
+    pub struct LibrarySelectionReg(u8);
     impl Debug;
     /// This bit sets the output driver into a true high-impedance state. The device
     /// must be enabled to go into the high-impedance state. When in hardware
@@ -802,8 +802,8 @@ impl Default for Control4Reg {
 #[derive(Copy, Clone)]
 #[repr(u8)]
 pub enum Register {
-    Status = 0,
-    Mode = 1,
+    Status = 0x00,
+    Mode = 0x01,
     /// This field is the entry point for real-time playback (RTP) data. The
     /// DRV2605 playback engine drives the RTP_INPUT[7:0] value to the load when
     /// MODE[2:0] = 5 (RTP mode). The RTP_INPUT[7:0] value can be updated in
@@ -812,21 +812,28 @@ pub enum Register {
     /// to unsigned by the DATA_FORMAT_RTP bit in register 0x1D. When the haptic
     /// waveform is complete, the user can idle the device by setting MODE[2:0]
     /// = 0, or alternatively by setting STANDBY = 1.
-    RealTimePlaybackInput = 2,
-    Register3 = 3,
-    WaveformSequence0 = 4,
-    WaveformSequence1 = 5,
-    WaveformSequence2 = 6,
-    WaveformSequence3 = 7,
-    WaveformSequence4 = 8,
-    WaveformSequence5 = 9,
-    WaveformSequence6 = 0xa,
-    WaveformSequence7 = 0xb,
-    Go = 0xc,
-    OverdriveTimeOffset = 0xd,
-    SustainTimeOffsetPositive = 0xe,
-    SustainTimeOffsetNegative = 0xf,
+    RealTimePlaybackInput = 0x02,
+    LibrarySelection = 0x03,
+    WaveformSequence0 = 0x04,
+    WaveformSequence1 = 0x05,
+    WaveformSequence2 = 0x06,
+    WaveformSequence3 = 0x07,
+    WaveformSequence4 = 0x08,
+    WaveformSequence5 = 0x09,
+    WaveformSequence6 = 0x0a,
+    WaveformSequence7 = 0x0b,
+    Go = 0x0c,
+    OverdriveTimeOffset = 0x0d,
+    SustainTimeOffsetPositive = 0x0e,
+    SustainTimeOffsetNegative = 0x0f,
     BrakeTimeOffset = 0x10,
+
+    // todo
+    AudioToVibeControl = 0x11,
+    AudioToVibeMinimumInputLevel = 0x12,
+    AudioToVibeMaximumInputLevel = 0x13,
+    AudioToVibeMinimumOutputDrive = 0x14,
+    AudioToVibeMaximumOutputDrive = 0x15,
 
     /// This bit sets the reference voltage for full-scale output during
     /// closed-loop operation. The auto-calibration routine uses this register
@@ -874,8 +881,6 @@ pub enum Register {
     /// BEMF_GAIN[1:0]
     AutoCalibrationBackEMFResult = 0x19,
 
-    LRAOpenLoopPeriod = 0x20,
-
     FeedbackControl = 0x1a,
 
     Control1 = 0x1b,
@@ -885,4 +890,10 @@ pub enum Register {
 
     // todo
     Control5 = 0x1f,
+
+    LRAOpenLoopPeriod = 0x20,
+
+    //todo
+    VBatVoltageMonitor = 0x21,
+    LraResonancePeriod = 0x22,
 }

@@ -57,6 +57,9 @@ fn main() -> ! {
     //     twi,
     //     LraCalibration::Auto(
     //         GeneralParams::default(),
+    //        // these are settings taken from the drv2605 evm for the SEMCO1030 (Mplus)
+    //        // 205hz freq, nominal voltage 1.5V, max voltage 3.0V, DRV2605_LRA_SAMPLE_TIME: 3, DRV2605_LRA_BLANKING_TIME: 2, DRV2605_LRA_IDISS_TIME: 2
+    //        // REQUIRED, you need to change based on your motor
     //         LraParams {
     //             rated: 0x3E,
     //             clamp: 0x89,
