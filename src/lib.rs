@@ -90,6 +90,7 @@ where
 
                 feedback.set_fb_brake_factor(c.brake_factor);
                 feedback.set_loop_gain(c.loop_gain);
+                feedback.set_n_erm_lra(true);
                 ctrl2.set_sample_time(c.lra_sample_time);
                 ctrl2.set_blanking_time(c.lra_blanking_time);
                 ctrl2.set_idiss_time(c.lra_idiss_time);
@@ -505,8 +506,22 @@ pub struct GeneralParams {
 
 /// additional fields requited for LRA calibration
 pub struct LraParams {
+    // 8.5.2.1 Rated Voltage Programming
     pub rated: u8,
+    // 8.5.2.2 Overdrive Voltage-Clamp Programming
+    /// Note the LRA and ERM equation labels are swapped
+    /// confirmed https://e2e.ti.com/support/other_analog/haptics/f/927/t/655886
+    /// (21.64x10-3 x OD_CLAMP[7:0] x (tDRIVE_TIME - 300x10^-6)) / (tDRIVE_TIME
+    /// + tIDISS_TIME + tBLANKING_TIME)
     pub clamp: u8,
+    // 8.5.1.1 Drive-Time Programming
+    // Sets initial guess for LRA drive-time in LRA mode
+    // Optimum drive time in ms is half LRA Period
+    // drive time ms = drive_time * 0.1 ms + 0.5 ms
+    // drive_time = (2.5ms-.5)/(.1 * drive time ms)
+    // For example if the motor resonance frequency is 200 Hz, period is 1/200hz is .005 or 5ms. 5ms/2 =2.5ms
+    // drive_time = (2.5ms-.5ms)/(.1 * 2.5ms)
+    // drive_time = 2/.25=8
     pub drive_time: u8,
 }
 
@@ -517,10 +532,10 @@ impl Default for GeneralParams {
             brake_factor: 2,
             loop_gain: 2,
             lra_sample_time: 3,
-            lra_blanking_time: 1, //not on drv2605
-            lra_idiss_time: 1,    //not on drv2605
+            lra_blanking_time: 1,
+            lra_idiss_time: 1,
             auto_cal_time: 3,
-            lra_zc_det_time: 0, //not on drv2605
+            lra_zc_det_time: 0,
         }
     }
 }
