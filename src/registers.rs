@@ -172,7 +172,7 @@ pub enum Library {
     /// Rated Voltage 3V Overdrive Voltage 3V Rise Time >140ms Brake Time >30ms
     Lra = 6,
     /// Rated Voltage 4.5V Overdrive Voltage 5V Rise Time 35-45ms Brake Time 10-20ms
-    Reserved = 7,
+    F = 7,
 }
 
 impl From<u8> for Library {
@@ -185,7 +185,7 @@ impl From<u8> for Library {
             4 => Library::D,
             5 => Library::E,
             6 => Library::Lra,
-            7 => Library::Reserved,
+            7 => Library::F,
             _ => unreachable!("impossible Library value"),
         }
     }

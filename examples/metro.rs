@@ -63,7 +63,7 @@ fn main() -> ! {
     //             drive_time: 19,
     //         },
     //     ),
-    // );
+    // ).unwrap();
 
     // let params = haptic.calibration().unwrap();
     // info!(
@@ -112,7 +112,7 @@ fn main() -> ! {
             red_led.set_low();
         }
 
-        dbgprint!("go: {:?}", haptic.set_go(true));
+        dbgprint!("go: {:?}", haptic.set_go());
     }
 
     // or rtp mode would look like this instead

@@ -225,9 +225,9 @@ where
     }
 
     /// Trigger a GO for whatever mode is enabled
-    pub fn set_go(&mut self, go: bool) -> Result<(), DrvError> {
+    pub fn set_go(&mut self) -> Result<(), DrvError> {
         let mut register = GoReg(self.read(Register::Go)?);
-        register.set_go(go);
+        register.set_go(true);
         self.write(Register::Go, register.0)
     }
 
@@ -402,7 +402,7 @@ where
         mode.set_mode(Mode::Diagnostics as u8);
         self.write(Register::Mode, mode.0)?;
 
-        self.set_go(true)?;
+        self.set_go()?;
 
         //todo timeout
         while GoReg(self.read(Register::Go)?).go() {}
@@ -423,7 +423,7 @@ where
         mode.set_mode(Mode::AutoCalibration as u8);
         self.write(Register::Mode, mode.0)?;
 
-        self.set_go(true)?;
+        self.set_go()?;
 
         //todo timeout
         while GoReg(self.read(Register::Go)?).go() {}
@@ -460,7 +460,6 @@ pub enum DrvError {
 /// same waveform
 pub const ADDRESS: u8 = 0x5a;
 
-#[allow(unused)]
 pub enum LraCalibration {
     Otp,
     /// When using autocalibration be sure to secure the motor to mass. It can't
@@ -469,7 +468,6 @@ pub enum LraCalibration {
     Load(LoadParams),
 }
 
-#[allow(unused)]
 pub enum ErmCalibration {
     Otp,
     /// When using autocalibration be sure to secure the motor to mass. It can't
