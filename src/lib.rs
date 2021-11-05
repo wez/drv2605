@@ -21,7 +21,7 @@ where
     /// Returns a calibrated Drv2605l device configured to standby mode for
     /// power savings. Use a `set_mode` and `set_go` to trigger a vibration.
     pub fn new(i2c: I2C, calibration: Calibration, lra: bool) -> Result<Self, DrvError> {
-        let mut haptic = Self { i2c, lra: false };
+        let mut haptic = Self { i2c, lra };
         haptic.check_id(7)?;
 
         // todo reset so registers are defaulted. Timing out..  need a solution

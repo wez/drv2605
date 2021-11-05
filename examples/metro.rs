@@ -55,7 +55,7 @@ fn main() -> ! {
     let mut haptic = Drv2605l::new(i2c, Calibration::Auto(calib), false).unwrap();
 
     // Or lra autocalibration would look like this.
-    // let calib = CalibrationParams::default();
+    // let mut calib = CalibrationParams::default();
     // these are tricky and are computed from the lra motor and drv2605l datasheets
     // calib.rated = 0x3E;
     // calib.clamp = 0x8C;
