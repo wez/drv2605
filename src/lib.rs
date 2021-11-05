@@ -18,9 +18,9 @@ impl<I2C, E> Drv2605l<I2C, E>
 where
     I2C: WriteRead<Error = E> + Write<Error = E>,
 {
-    /// Returns a calibrated Drv2605l Erm device configured to standby mode for
+    /// Returns a calibrated Drv2605l device configured to standby mode for
     /// power savings. Use a `set_mode` and `set_go` to trigger a vibration.
-    pub fn erm(i2c: I2C, calibration: ErmCalibration) -> Result<Self, DrvError> {
+    pub fn new(i2c: I2C, calibration: Calibration, lra: bool) -> Result<Self, DrvError> {
         let mut haptic = Self { i2c, lra: false };
         haptic.check_id(7)?;
 
@@ -30,59 +30,14 @@ where
 
         match calibration {
             // device will get calibration values out of the otp if the otp bit is set
-            ErmCalibration::Otp => {
+            Calibration::Otp => {
                 if !haptic.is_otp()? {
                     return Err(DrvError::OTPNotProgrammed);
                 }
             }
             // load up previously calibrated values
-            ErmCalibration::Load(c) => haptic.set_calibration(c)?,
-            ErmCalibration::Auto(c) => {
-                let mut feedback: FeedbackControlReg = Default::default();
-                let mut ctrl2: Control2Reg = Default::default();
-                let mut ctrl4: Control4Reg = Default::default();
-
-                feedback.set_fb_brake_factor(c.brake_factor);
-                feedback.set_loop_gain(c.loop_gain);
-                ctrl2.set_sample_time(c.lra_sample_time);
-                ctrl2.set_blanking_time(c.lra_blanking_time);
-                ctrl2.set_idiss_time(c.lra_idiss_time);
-                ctrl4.set_auto_cal_time(c.auto_cal_time);
-                ctrl4.set_zc_det_time(c.lra_zc_det_time);
-
-                haptic.write(Register::FeedbackControl, feedback.0)?;
-                haptic.write(Register::Control2, ctrl2.0)?;
-                haptic.write(Register::Control4, ctrl4.0)?;
-                haptic.calibrate()?;
-            }
-        }
-
-        haptic.set_standby(true)?;
-
-        Ok(haptic)
-    }
-
-    /// Returns a calibrated Drv2605l Lra device configured to standby mode for
-    /// power savings. Use a `set_mode` and `set_go` to trigger a vibration.
-    pub fn lra(i2c: I2C, calibration: LraCalibration) -> Result<Self, DrvError> {
-        let mut haptic = Self { i2c, lra: true };
-        haptic.check_id(7)?;
-
-        // todo reset so registers are defaulted. Timing out..  need a solution
-        // for delaying and retrying
-        // haptic.reset()?;
-
-        match calibration {
-            // device will get calibration values out of the otp if the otp bit
-            // is set
-            LraCalibration::Otp => {
-                if !haptic.is_otp()? {
-                    return Err(DrvError::OTPNotProgrammed);
-                }
-            }
-            // load up previously calibrated values
-            LraCalibration::Load(c) => haptic.set_calibration(c)?,
-            LraCalibration::Auto(c, c_lra) => {
+            Calibration::Load(c) => haptic.set_calibration(c)?,
+            Calibration::Auto(c) => {
                 let mut feedback: FeedbackControlReg = Default::default();
                 let mut ctrl2: Control2Reg = Default::default();
                 let mut ctrl4: Control4Reg = Default::default();
@@ -90,19 +45,21 @@ where
 
                 feedback.set_fb_brake_factor(c.brake_factor);
                 feedback.set_loop_gain(c.loop_gain);
-                feedback.set_n_erm_lra(true);
+                if (lra) {
+                    feedback.set_n_erm_lra(true);
+                }
                 ctrl2.set_sample_time(c.lra_sample_time);
                 ctrl2.set_blanking_time(c.lra_blanking_time);
                 ctrl2.set_idiss_time(c.lra_idiss_time);
                 ctrl4.set_auto_cal_time(c.auto_cal_time);
                 ctrl4.set_zc_det_time(c.lra_zc_det_time);
-                ctrl1.set_drive_time(c_lra.drive_time);
+                ctrl1.set_drive_time(c.drive_time);
 
                 haptic.write(Register::FeedbackControl, feedback.0)?;
                 haptic.write(Register::Control2, ctrl2.0)?;
                 haptic.write(Register::Control4, ctrl4.0)?;
-                haptic.write(Register::RatedVoltage, c_lra.rated)?;
-                haptic.write(Register::OverdriveClampVoltage, c_lra.clamp)?;
+                haptic.write(Register::RatedVoltage, c.rated)?;
+                haptic.write(Register::OverdriveClampVoltage, c.clamp)?;
                 haptic.write(Register::Control1, ctrl1.0)?;
                 haptic.calibrate()?;
             }
@@ -461,30 +418,25 @@ pub enum DrvError {
 /// same waveform
 pub const ADDRESS: u8 = 0x5a;
 
-pub enum LraCalibration {
-    // Values were previously programmed into nonvolatile memory
-    Otp,
-    /// When using autocalibration be sure to secure the motor to mass. It can't
-    /// calibrate if its jumping around on a board or a desk.
-    Auto(GeneralParams, LraParams),
-    // Load previously calibrated values
-    Load(LoadParams),
-}
-
 // Choose calibration method during driver construction
-pub enum ErmCalibration {
-    // Values were previously programmed into nonvolatile memory
-    Otp,
-    /// When using autocalibration be sure to secure the motor to mass. It can't
-    /// calibrate if its jumping around on a board or a desk.
-    Auto(GeneralParams),
+pub enum Calibration {
+    /// Many calibration params can be defaulted, and maybe the entire thing for
+    /// some ERM motors. LRA motors especially though are required to be
+    /// calculated from the drv2605l and motor datasheet.
+    ///
+    /// NOTE: When using autocalibration be sure to secure the motor to some
+    /// kind of mass. It can't calibrate if its jumping around on a board or a
+    /// desk.
+    Auto(CalibrationParams),
     // Load previously calibrated values
     Load(LoadParams),
+    // Values were previously programmed into nonvolatile memory. This is not common.
+    Otp,
 }
 
 // Computed calibration parameters. Provide previously calculated parameters
-// during construction, or after construction with Auto calibration, read thes
-// back and then hardcode them
+// during construction, or after read back the calibrated values for hardcoding
+// after succsesfully Auto calibration.s
 pub struct LoadParams {
     // Automatic Compensation for Resistive Losses
     pub comp: u8,
@@ -494,7 +446,12 @@ pub struct LoadParams {
     pub gain: u8,
 }
 
-pub struct GeneralParams {
+/// Calibration Parameters for both motor erm and lra motor types. Some params
+/// really need to be computed from the drv2605l and motor datashets, especiall
+/// for LRA motors.
+#[non_exhaustive]
+pub struct CalibrationParams {
+    // These fields generally shouldn't need changing from defaults
     pub brake_factor: u8,
     pub loop_gain: u8,
     pub lra_sample_time: u8,
@@ -502,31 +459,16 @@ pub struct GeneralParams {
     pub lra_idiss_time: u8,
     pub auto_cal_time: u8,
     pub lra_zc_det_time: u8,
-}
-
-/// additional fields requited for LRA calibration
-pub struct LraParams {
-    // 8.5.2.1 Rated Voltage Programming
+    /// These are the required fields for calibration
+    /// Datasheet 8.5.2.1 Rated Voltage Programming
     pub rated: u8,
-    // 8.5.2.2 Overdrive Voltage-Clamp Programming
-    /// Note the LRA and ERM equation labels are swapped
-    /// confirmed https://e2e.ti.com/support/other_analog/haptics/f/927/t/655886
-    /// (21.64x10-3 x OD_CLAMP[7:0] x (tDRIVE_TIME - 300x10^-6)) / (tDRIVE_TIME
-    /// + tIDISS_TIME + tBLANKING_TIME)
+    // Datasheet 8.5.2.2 Overdrive Voltage-Clamp Programming
     pub clamp: u8,
-    // 8.5.1.1 Drive-Time Programming
-    // Sets initial guess for LRA drive-time in LRA mode
-    // Optimum drive time in ms is half LRA Period
-    // drive time ms = drive_time * 0.1 ms + 0.5 ms
-    // drive_time = (2.5ms-.5)/(.1 * drive time ms)
-    // For example if the motor resonance frequency is 200 Hz, period is 1/200hz is .005 or 5ms. 5ms/2 =2.5ms
-    // drive_time = (2.5ms-.5ms)/(.1 * 2.5ms)
-    // drive_time = 2/.25=8
+    // Datasheet 8.5.1.1 Drive-Time Programming
     pub drive_time: u8,
 }
 
-impl Default for GeneralParams {
-    /// general best fit values from datasheet
+impl Default for CalibrationParams {
     fn default() -> Self {
         Self {
             brake_factor: 2,
@@ -536,6 +478,9 @@ impl Default for GeneralParams {
             lra_idiss_time: 1,
             auto_cal_time: 3,
             lra_zc_det_time: 0,
+            rated: 0x3E,
+            clamp: 0x8C,
+            drive_time: 0x13,
         }
     }
 }

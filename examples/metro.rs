@@ -8,7 +8,7 @@ extern crate metro_m0 as hal;
 extern crate panic_rtt;
 
 use cortex_m_rt::entry;
-use drv2605::{Drv2605l, Effect, ErmCalibration, Library, LoadParams};
+use drv2605::{Calibration, CalibrationParams, Drv2605l, Effect, Library};
 use hal::clock::GenericClockController;
 use hal::delay::Delay;
 use hal::prelude::*;
@@ -49,44 +49,43 @@ fn main() -> ! {
         &mut pins.port,
     );
 
-    // will vibrate on startup to autocalibrate, should probably use auto once and print those values to be used subsequently
-    // let mut haptic = Drv2605l::erm(twi, ErmCalibration::Auto(GeneralParams::default())).unwrap();
+    // Note secure motor to a mass or calibration will fail!
+    // might get away with defaults for an erm motor, but ideally compute these
+    let calib = CalibrationParams::default();
+    let mut haptic = Drv2605l::new(i2c, Calibration::Auto(calib), false).unwrap();
 
-    // Or lra would looks like this
-    // let mut haptic = Drv2605l::lra(
-    //     twi,
-    //     LraCalibration::Auto(
-    //         GeneralParams::default(),
-    //        // these are settings taken from the drv2605 evm for the SEMCO1030 (Mplus)
-    //        // 205hz freq, nominal voltage 1.5V, max voltage 3.0V, DRV2605_LRA_SAMPLE_TIME: 3, DRV2605_LRA_BLANKING_TIME: 2, DRV2605_LRA_IDISS_TIME: 2
-    //        // REQUIRED, you need to change based on your motor
-    //         LraParams {
-    //             rated: 0x3E,
-    //             clamp: 0x89,
-    //             drive_time: 19,
-    //         },
-    //     ),
-    // ).unwrap();
+    // Or lra autocalibration would look like this.
+    // let calib = CalibrationParams::default();
+    // these are tricky and are computed from the lra motor and drv2605l datasheets
+    // calib.rated = 0x3E;
+    // calib.clamp = 0x8C;
+    // calib.drive_time = 0x13;
+    // let mut haptic = Drv2605l::new(i2c, Calibration::Auto(calib), false).unwrap();
 
+    // print the sucessful calibration values so you can hardcode them
     // let params = haptic.calibration().unwrap();
     // info!(
     //     "comp:{} bemf:{} gain:{}",
     //     params.comp, params.bemf, params.gain
     // );
 
-    let mut haptic = Drv2605l::erm(
-        i2c,
-        ErmCalibration::Load(LoadParams {
-            comp: 15,
-            bemf: 134,
-            gain: 2,
-        }),
-    )
-    .unwrap();
+    // and hardcode them instead of using calibration like this
+    // let mut haptic = Drv2605l::new(
+    //     i2c,
+    //     //from the
+    //     Calibration::Load(drv2605::LoadParams {
+    //         comp: 0x3E,
+    //         bemf: 0x89,
+    //         gain: 0x25,
+    //     }),
+    //     false,
+    // )
+    // .unwrap();
     dbgprint!("device successfully init");
 
-    // rom mode using built in effects, choose the correct ErmLibrary for your
-    // motor characteristics
+    // rom mode using built in effects. Each library has all the same
+    // vibrations, but is tuned to work for certain motor characteristics so its
+    // important to choose Library for for your motor characteristics
     haptic.set_mode_rom(Library::B).unwrap();
 
     // set one effect to happen when go bit enabled
