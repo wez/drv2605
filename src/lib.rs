@@ -73,25 +73,70 @@ where
         Ok(haptic)
     }
 
-    /// Select the Immersion TS2200 library that matches your motor
-    /// characteristic. For ERM Motors, open loop operation will be enabled as
-    /// all ERM libraries are tuned for open loop.
-    ///
-    /// Use set rom setters and then GO bit to play an `Effect`
-    pub fn set_mode_rom(&mut self, library: Library) -> Result<(), DrvError> {
-        let mut mode = ModeReg(self.read(Register::Mode)?);
-        mode.set_mode(Mode::InternalTrigger as u8);
-        self.write(Register::Mode, mode.0)?;
+    pub fn set_mode(&mut self, mode: Mode) -> Result<(), DrvError> {
+        match mode {
+            Mode::Pwm => {
+                let mut ctrl3 = Control3Reg(self.read(Register::Control3)?);
+                if self.lra {
+                    ctrl3.set_lra_open_loop(false);
+                } else {
+                    ctrl3.set_erm_open_loop(false);
+                }
+                ctrl3.set_n_pwm_analog(false);
+                self.write(Register::Control3, ctrl3.0)?;
 
-        if !self.lra {
-            self.set_open_loop(true)?;
-        } else {
-            self.set_open_loop(false)?;
+                let mut mode = ModeReg(self.read(Register::Mode)?);
+                mode.set_mode(registers::Mode::PwmInputAndAnalogInput as u8);
+                self.write(Register::Mode, mode.0)
+            }
+            Mode::Rom(library) => {
+                let mut mode = ModeReg(self.read(Register::Mode)?);
+                mode.set_mode(registers::Mode::InternalTrigger as u8);
+                self.write(Register::Mode, mode.0)?;
+
+                let mut ctrl3 = Control3Reg(self.read(Register::Control3)?);
+                if self.lra {
+                    ctrl3.set_lra_open_loop(false);
+                } else {
+                    // erm waveform libraries are tuned for open loop
+                    ctrl3.set_lra_open_loop(true);
+                }
+                self.write(Register::Control3, ctrl3.0)?;
+
+                let mut register = LibrarySelectionReg(self.read(Register::LibrarySelection)?);
+                register.set_library_selection(library as u8);
+                self.write(Register::LibrarySelection, register.0)
+            }
+            Mode::Analog => {
+                let mut ctrl3 = Control3Reg(self.read(Register::Control3)?);
+                if self.lra {
+                    ctrl3.set_lra_open_loop(false);
+                } else {
+                    ctrl3.set_erm_open_loop(false);
+                }
+                ctrl3.set_n_pwm_analog(true);
+                self.write(Register::Control3, ctrl3.0)?;
+
+                let mut mode = ModeReg(self.read(Register::Mode)?);
+                mode.set_mode(registers::Mode::PwmInputAndAnalogInput as u8);
+                self.write(Register::Mode, mode.0)
+            }
+            Mode::RealTimePlayback => {
+                let mut ctrl3 = Control3Reg(self.read(Register::Control3)?);
+                if self.lra {
+                    ctrl3.set_lra_open_loop(false);
+                } else {
+                    ctrl3.set_erm_open_loop(false);
+                }
+                // We don't need to unset as no other modes use this bit
+                ctrl3.set_data_format_rtp(true);
+                self.write(Register::Control3, ctrl3.0)?;
+
+                let mut mode = ModeReg(self.read(Register::Mode)?);
+                mode.set_mode(registers::Mode::RealTimePlayback as u8);
+                self.write(Register::Mode, mode.0)
+            }
         }
-
-        let mut register = LibrarySelectionReg(self.read(Register::LibrarySelection)?);
-        register.set_library_selection(library as u8);
-        self.write(Register::LibrarySelection, register.0)
     }
 
     /// Sets up to 8 Effects to play in order when `set_go` is called. Stops
@@ -127,57 +172,6 @@ where
         self.i2c
             .write(ADDRESS, &buf)
             .map_err(|_| DrvError::ConnectionError)
-    }
-
-    /// Set analog input mode.
-    ///
-    /// Send an analog voltage to the IN/TRIG to set a duty cycle which will
-    /// persist until mode change or standby. The reference voltage in standby
-    /// mode is 1.8 V thus 100% is 1.8V, 50% is .9V, 0% is 0V analogous to the
-    /// duty-cycle percentage in PWM mode
-    pub fn set_mode_analog(&mut self) -> Result<(), DrvError> {
-        self.set_open_loop(false)?;
-
-        let mut ctrl3 = Control3Reg(self.read(Register::Control3)?);
-        ctrl3.set_n_pwm_analog(true);
-        self.write(Register::Control3, ctrl3.0)?;
-
-        let mut mode = ModeReg(self.read(Register::Mode)?);
-        mode.set_mode(Mode::PwmInputAndAnalogInput as u8);
-        self.write(Register::Mode, mode.0)
-    }
-
-    /// Enable Pulse Width Modulated mod (closed loop unidirectional )
-    ///
-    /// 0% full braking, 50% 1/2 Rated Voltage, 100% Rated Voltage
-    pub fn set_mode_pwm(&mut self) -> Result<(), DrvError> {
-        self.set_open_loop(false)?;
-
-        let mut ctrl3 = Control3Reg(self.read(Register::Control3)?);
-        ctrl3.set_n_pwm_analog(false);
-        self.write(Register::Control3, ctrl3.0)?;
-
-        let mut mode = ModeReg(self.read(Register::Mode)?);
-        mode.set_mode(Mode::PwmInputAndAnalogInput as u8);
-        self.write(Register::Mode, mode.0)
-    }
-
-    /// Enable Real Time Playback (closed loop unidirectional unsigned )
-    ///
-    /// Use `set_rtp` to update the duty cycle which will persist until another
-    /// call to `set_rtp`, change to standby, or mode change.
-    /// 0x00 full braking, 0x7F 1/2 Rated Voltage, 0xFF Rated Voltage
-    pub fn set_mode_rtp(&mut self) -> Result<(), DrvError> {
-        self.set_open_loop(false)?;
-
-        let mut ctrl3 = Control3Reg(self.read(Register::Control3)?);
-        // We don't need to unset as no other modes use this bit
-        ctrl3.set_data_format_rtp(true);
-        self.write(Register::Control3, ctrl3.0)?;
-
-        let mut mode = ModeReg(self.read(Register::Mode)?);
-        mode.set_mode(Mode::RealTimePlayback as u8);
-        self.write(Register::Mode, mode.0)
     }
 
     /// Change the duty cycle for rtp mode
@@ -235,18 +229,6 @@ where
 
     /* Private calls */
 
-    /// Closed-loop operation is usually desired for because of automatic
-    /// overdrive and braking properties.
-    fn set_open_loop(&mut self, enable: bool) -> Result<(), DrvError> {
-        let mut reg = Control3Reg(self.read(Register::Control3)?);
-        if self.lra {
-            reg.set_lra_open_loop(enable);
-        } else {
-            reg.set_erm_open_loop(enable);
-        }
-        self.write(Register::Control3, reg.0)
-    }
-
     /// Write `value` to `register`
     fn write(&mut self, register: Register, value: u8) -> Result<(), DrvError> {
         self.i2c
@@ -272,10 +254,6 @@ where
         Ok(())
     }
 
-    fn mode(&mut self) -> Result<ModeReg, DrvError> {
-        self.read(Register::Mode).map(ModeReg)
-    }
-
     /// performs the equivalent operation of power cycling the device. Any
     /// playback operations are immediately interrupted, and all registers are
     /// reset to the default values.
@@ -287,68 +265,6 @@ where
         while ModeReg(self.read(Register::Mode)?).dev_reset() {}
 
         Ok(())
-    }
-
-    /// This bit sets the output driver into a true high-impedance state. The
-    /// device must be enabled to go into the high-impedance state. When in
-    /// hardware shutdown or standby mode, the output drivers have 15 kΩ to
-    /// ground. When the HI_Z bit is asserted, the hi-Z functionality takes
-    /// effect immediately, even if a transaction is taking place.
-    fn set_high_impedance_state(&mut self, value: bool) -> Result<(), DrvError> {
-        let mut register = LibrarySelectionReg(self.read(Register::LibrarySelection)?);
-        register.set_hi_z(value);
-        self.write(Register::LibrarySelection, register.0)
-    }
-
-    /// This bit adds a time offset to the overdrive portion of the library
-    /// waveforms. Some motors require more overdrive time than others, so this
-    /// register allows the user to add or remove overdrive time from the
-    /// library waveforms. The maximum voltage value in the library waveform is
-    /// automatically determined to be the overdrive portion. This register is
-    /// only useful in open-loop mode. Overdrive is automatic for closed-loop
-    /// mode. The offset is interpreted as 2s complement, so the time offset may
-    /// be positive or negative. Overdrive Time Offset (ms) = ODT[7:0] ×
-    /// PLAYBACK_INTERVAL See the section for PLAYBACK_INTERVAL details.
-    fn set_overdrive_time_offset(&mut self, value: i8) -> Result<(), DrvError> {
-        self.write(Register::OverdriveTimeOffset, value as u8)
-    }
-
-    /// This bit adds a time offset to the positive sustain portion of the
-    /// library waveforms. Some motors have a faster or slower response time
-    /// than others, so this register allows the user to add or remove positive
-    /// sustain time from the library waveforms. Any positive voltage value
-    /// other than the overdrive portion is considered as a sustain positive
-    /// value. The offset is interpreted as 2s complement, so the time offset
-    /// can positive or negative. Sustain-Time Positive Offset (ms) = SPT[7:0] ×
-    /// PLAYBACK_INTERVAL See the section for PLAYBACK_INTERVAL details.
-    fn set_sustain_time_offset_positive(&mut self, value: i8) -> Result<(), DrvError> {
-        self.write(Register::SustainTimeOffsetPositive, value as u8)
-    }
-
-    /// This bit adds a time offset to the negative sustain portion of the
-    /// library waveforms. Some motors have a faster or slower response time
-    /// than others, so this register allows the user to add or remove negative
-    /// sustain time from the library waveforms. Any negative voltage value
-    /// other than the overdrive portion is considered as a sustaining negative
-    /// value. The offset is interpreted as two’s complement, so the time offset
-    /// can be positive or negative. Sustain-Time Negative Offset (ms) =
-    /// SNT[7:0] × PLAYBACK_INTERVAL See the section for PLAYBACK_INTERVAL
-    /// details.
-    fn set_sustain_time_offset_negative(&mut self, value: i8) -> Result<(), DrvError> {
-        self.write(Register::SustainTimeOffsetNegative, value as u8)
-    }
-
-    /// This bit adds a time offset to the braking portion of the library
-    /// waveforms. Some motors require more braking time than others, so this
-    /// register allows the user to add or take away brake time from the library
-    /// waveforms. The most negative voltage value in the library waveform is
-    /// automatically determined to be the braking portion. This register is
-    /// only useful in open-loop mode. Braking is automatic for closed-loop
-    /// mode. The offset is interpreted as 2s complement, so the time offset can
-    /// be positive or negative. Brake Time Offset (ms) = BRT[7:0] ×
-    /// PLAYBACK_INTERVAL See the section for PLAYBACK_INTERVAL details.
-    fn set_brake_time_offset(&mut self, value: i8) -> Result<(), DrvError> {
-        self.write(Register::BrakeTimeOffset, value as u8)
     }
 
     fn set_calibration(&mut self, load: LoadParams) -> Result<(), DrvError> {
@@ -365,7 +281,7 @@ where
     fn diagnostics(&mut self) -> Result<(), DrvError> {
         let mut mode = ModeReg(self.read(Register::Mode)?);
         mode.set_standby(false);
-        mode.set_mode(Mode::Diagnostics as u8);
+        mode.set_mode(registers::Mode::Diagnostics as u8);
         self.write(Register::Mode, mode.0)?;
 
         self.set_go()?;
@@ -386,7 +302,7 @@ where
     fn calibrate(&mut self) -> Result<LoadParams, DrvError> {
         let mut mode = ModeReg(self.read(Register::Mode)?);
         mode.set_standby(false);
-        mode.set_mode(Mode::AutoCalibration as u8);
+        mode.set_mode(registers::Mode::AutoCalibration as u8);
         self.write(Register::Mode, mode.0)?;
 
         self.set_go()?;
@@ -497,4 +413,31 @@ impl Default for CalibrationParams {
             drive_time: 0x13,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Mode {
+    /// Select the Immersion TS2200 library that matches your motor
+    /// characteristic. For ERM Motors, open loop operation will be enabled as
+    /// all ERM libraries are tuned for open loop.
+    ///
+    /// Use set rom setters and then GO bit to play an `Effect`
+    Rom(Library),
+    /// Enable Pulse Width Modulated mod (closed loop unidirectional )
+    ///
+    /// 0% full braking, 50% 1/2 Rated Voltage, 100% Rated Voltage
+    Pwm,
+    /// Set analog input mode.
+    ///
+    /// Send an analog voltage to the IN/TRIG to set a duty cycle which will
+    /// persist until mode change or standby. The reference voltage in standby
+    /// mode is 1.8 V thus 100% is 1.8V, 50% is .9V, 0% is 0V analogous to the
+    /// duty-cycle percentage in PWM mode
+    Analog,
+    /// Enable Real Time Playback (closed loop unidirectional unsigned )
+    ///
+    /// Use `set_rtp` to update the duty cycle which will persist until another
+    /// call to `set_rtp`, change to standby, or mode change.
+    /// 0x00 full braking, 0x7F 1/2 Rated Voltage, 0xFF Rated Voltage
+    RealTimePlayback,
 }
