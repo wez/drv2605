@@ -1,9 +1,11 @@
 #![no_std]
 
 mod registers;
-use crate::registers::*;
-pub use crate::registers::{Effect, Library};
 use embedded_hal::blocking::i2c::{Write, WriteRead};
+pub use registers::{
+    Control1Reg, Control2Reg, Control3Reg, Control4Reg, Effect, FeedbackControlReg, GoReg, Library,
+    LibrarySelectionReg, ModeReg, Register, StatusReg, WaveformReg,
+};
 
 pub struct Drv2605l<I2C, E>
 where
@@ -74,67 +76,57 @@ where
     }
 
     pub fn set_mode(&mut self, mode: Mode) -> Result<(), DrvError> {
+        let mut m = ModeReg(self.read(Register::Mode)?);
+        let mut ctrl3 = Control3Reg(self.read(Register::Control3)?);
+
         match mode {
             Mode::Pwm => {
-                let mut ctrl3 = Control3Reg(self.read(Register::Control3)?);
-                if self.lra {
-                    ctrl3.set_lra_open_loop(false);
-                } else {
+                // unset in case coming from rom mode
+                if !self.lra {
                     ctrl3.set_erm_open_loop(false);
                 }
                 ctrl3.set_n_pwm_analog(false);
                 self.write(Register::Control3, ctrl3.0)?;
 
-                let mut mode = ModeReg(self.read(Register::Mode)?);
-                mode.set_mode(registers::Mode::PwmInputAndAnalogInput as u8);
-                self.write(Register::Mode, mode.0)
+                m.set_mode(registers::Mode::PwmInputAndAnalogInput as u8);
+                self.write(Register::Mode, m.0)
             }
             Mode::Rom(library) => {
-                let mut mode = ModeReg(self.read(Register::Mode)?);
-                mode.set_mode(registers::Mode::InternalTrigger as u8);
-                self.write(Register::Mode, mode.0)?;
-
-                let mut ctrl3 = Control3Reg(self.read(Register::Control3)?);
-                if self.lra {
-                    ctrl3.set_lra_open_loop(false);
-                } else {
-                    // erm waveform libraries are tuned for open loop
-                    ctrl3.set_lra_open_loop(true);
+                // erm requires open loop mode
+                if !self.lra {
+                    ctrl3.set_erm_open_loop(true);
                 }
                 self.write(Register::Control3, ctrl3.0)?;
 
-                let mut register = LibrarySelectionReg(self.read(Register::LibrarySelection)?);
-                register.set_library_selection(library as u8);
-                self.write(Register::LibrarySelection, register.0)
+                let mut lib = LibrarySelectionReg(self.read(Register::LibrarySelection)?);
+                lib.set_library_selection(library as u8);
+                self.write(Register::LibrarySelection, lib.0)?;
+
+                m.set_mode(registers::Mode::InternalTrigger as u8);
+                self.write(Register::Mode, m.0)
             }
             Mode::Analog => {
-                let mut ctrl3 = Control3Reg(self.read(Register::Control3)?);
-                if self.lra {
-                    ctrl3.set_lra_open_loop(false);
-                } else {
+                // unset in case coming from rom mode
+                if !self.lra {
                     ctrl3.set_erm_open_loop(false);
                 }
                 ctrl3.set_n_pwm_analog(true);
                 self.write(Register::Control3, ctrl3.0)?;
 
-                let mut mode = ModeReg(self.read(Register::Mode)?);
-                mode.set_mode(registers::Mode::PwmInputAndAnalogInput as u8);
-                self.write(Register::Mode, mode.0)
+                m.set_mode(registers::Mode::PwmInputAndAnalogInput as u8);
+                self.write(Register::Mode, m.0)
             }
             Mode::RealTimePlayback => {
-                let mut ctrl3 = Control3Reg(self.read(Register::Control3)?);
-                if self.lra {
-                    ctrl3.set_lra_open_loop(false);
-                } else {
+                // We won't need to unset as no other modes use this bit
+                ctrl3.set_data_format_rtp(true);
+                // unset in case coming from rom mode
+                if !self.lra {
                     ctrl3.set_erm_open_loop(false);
                 }
-                // We don't need to unset as no other modes use this bit
-                ctrl3.set_data_format_rtp(true);
                 self.write(Register::Control3, ctrl3.0)?;
 
-                let mut mode = ModeReg(self.read(Register::Mode)?);
-                mode.set_mode(registers::Mode::RealTimePlayback as u8);
-                self.write(Register::Mode, mode.0)
+                m.set_mode(registers::Mode::RealTimePlayback as u8);
+                self.write(Register::Mode, m.0)
             }
         }
     }
