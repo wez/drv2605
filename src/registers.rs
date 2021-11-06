@@ -209,7 +209,7 @@ bitfield! {
 impl From<Effect> for u8 {
     fn from(val: Effect) -> Self {
         match val {
-            Effect::Delays(n) => n & 0x80,
+            Effect::Delays(n) => n | 0x80,
             Effect::Stop => 0,
             Effect::StrongClick100 => 1,
             Effect::StrongClick60 => 2,
@@ -341,7 +341,7 @@ impl From<Effect> for u8 {
 /// Identifies which of the waveforms from the ROM library that should
 /// be played in a given waveform slot.
 #[allow(unused)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Effect {
     /// No effect, or Stop playing
     Stop,
