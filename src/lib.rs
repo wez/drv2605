@@ -358,7 +358,7 @@ pub enum DrvError {
 /// same waveform
 const ADDRESS: u8 = 0x5a;
 
-// Choose calibration method during driver construction
+/// Choose calibration method during driver construction
 pub enum Calibration {
     /// Many calibration params can be defaulted, and maybe the entire thing for
     /// some ERM motors. Required params for LRA motors especially though should
@@ -368,16 +368,16 @@ pub enum Calibration {
     /// motor to some kind of mass. It can't calibrate if its jumping around on
     /// a board or a desk.
     Auto(CalibrationParams),
-    // Load previously calibrated values. It is common to do an autocalibration
-    // and then read back the calibration parameters so you can hardcode them
+    /// Load previously calibrated values. It is common to do an autocalibration
+    /// and then read back the calibration parameters so you can hardcode them
     Load(LoadParams),
-    // Values were previously programmed into nonvolatile memory. This is not common.
+    /// Values were previously programmed into nonvolatile memory. This is not common.
     Otp,
 }
 
-// Computed calibration parameters. Provide previously calculated parameters
-// during construction, or after read back the calibrated values for hardcoding
-// after succsesfully Auto calibration.s
+/// Computed calibration parameters. Provide previously calculated parameters
+/// during construction, or after read back the calibrated values for hardcoding
+/// after succsesfully Auto calibration.s
 pub struct LoadParams {
     /// Automatic Compensation for Resistive Losses
     pub comp: u8,
@@ -431,6 +431,8 @@ impl Default for CalibrationParams {
     }
 }
 
+/// The purpose of the functionality is to add time stretching (or time
+/// shrinking) to the waveform. Defaults are totally fine.
 #[derive(Debug, Clone, Copy)]
 pub struct RomOptions {
     /// Overdrive Time Offset (ms) = overdrive_time * playback_interval

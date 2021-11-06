@@ -193,7 +193,7 @@ impl Default for ModeReg {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Library {
-    // No library selected
+    /// No library selected
     Empty = 0,
     /// Rated Voltage 1.3V Overdrive Voltage 3V Rise Time 40-60ms Brake Time 20-40ms
     A = 1,
@@ -1074,7 +1074,6 @@ pub enum Register {
     Control3 = 0x1d,
     Control4 = 0x1e,
 
-    // todo
     Control5 = 0x1f,
 
     LRAOpenLoopPeriod = 0x20,
