@@ -3,14 +3,13 @@
 mod registers;
 use embedded_hal::blocking::i2c::{Write, WriteRead};
 use registers::{
-    BrakeTimeOffsetReg, OverdriveTimeOffsetReg, SustainTimeOffsetNegativeReg,
-    SustainTimeOffsetPositiveReg,
+    BrakeTimeOffsetReg, Control1Reg, Control2Reg, Control3Reg, Control4Reg, Control5Reg,
+    FeedbackControlReg, GoReg, LibrarySelectionReg, ModeReg, OverdriveTimeOffsetReg, Register,
+    StatusReg, SustainTimeOffsetNegativeReg, SustainTimeOffsetPositiveReg,
 };
-pub use registers::{
-    Control1Reg, Control2Reg, Control3Reg, Control4Reg, Control5Reg, Effect, FeedbackControlReg,
-    GoReg, Library, LibrarySelectionReg, ModeReg, Register, StatusReg,
-};
+pub use registers::{Effect, Library};
 
+/// A Texas instruments Drv2605 haptic motor driver for LRA and ERM motors
 pub struct Drv2605l<I2C, E>
 where
     I2C: WriteRead<Error = E> + Write<Error = E>,
@@ -67,8 +66,8 @@ where
                 haptic.write(Register::FeedbackControl, feedback.0)?;
                 haptic.write(Register::Control2, ctrl2.0)?;
                 haptic.write(Register::Control4, ctrl4.0)?;
-                haptic.write(Register::RatedVoltage, c.rated)?;
-                haptic.write(Register::OverdriveClampVoltage, c.clamp)?;
+                haptic.write(Register::RatedVoltage, c.rated_voltage)?;
+                haptic.write(Register::OverdriveClampVoltage, c.overdrive_voltage_clamp)?;
                 haptic.write(Register::Control1, ctrl1.0)?;
                 haptic.calibrate()?;
             }
@@ -222,8 +221,8 @@ where
     }
 
     /// Get the status bits
-    pub fn status(&mut self) -> Result<StatusReg, DrvError> {
-        self.read(Register::Status).map(StatusReg)
+    pub fn status(&mut self) -> Result<u8, DrvError> {
+        self.read(Register::Status)
     }
 
     /// Get the LoadParams that were loaded at startup or calculated via
@@ -233,13 +232,13 @@ where
             .read(Register::FeedbackControl)
             .map(FeedbackControlReg)?;
 
-        let comp = self.read(Register::AutoCalibrationCompensationResult)?;
-        let bemf = self.read(Register::AutoCalibrationBackEMFResult)?;
+        let compenstation = self.read(Register::AutoCalibrationCompensationResult)?;
+        let back_emf = self.read(Register::AutoCalibrationBackEMFResult)?;
 
         Ok(LoadParams {
-            gain: feedback.bemf_gain(),
-            comp,
-            bemf,
+            back_emf_gain: feedback.bemf_gain(),
+            compenstation,
+            back_emf,
         })
     }
 
@@ -262,7 +261,7 @@ where
     }
 
     fn check_id(&mut self, id: u8) -> Result<(), DrvError> {
-        let reg = self.status()?;
+        let reg = StatusReg(self.status()?);
         if reg.device_id() != id {
             return Err(DrvError::WrongDeviceId);
         }
@@ -285,12 +284,15 @@ where
 
     fn set_calibration(&mut self, load: LoadParams) -> Result<(), DrvError> {
         let mut fbcr = FeedbackControlReg(self.read(Register::FeedbackControl)?);
-        fbcr.set_bemf_gain(load.gain);
+        fbcr.set_bemf_gain(load.back_emf_gain);
         self.write(Register::FeedbackControl, fbcr.0)?;
 
-        self.write(Register::AutoCalibrationCompensationResult, load.comp)?;
+        self.write(
+            Register::AutoCalibrationCompensationResult,
+            load.compenstation,
+        )?;
 
-        self.write(Register::AutoCalibrationBackEMFResult, load.bemf)
+        self.write(Register::AutoCalibrationBackEMFResult, load.back_emf)
     }
 
     /// Run diagnostics
@@ -305,7 +307,7 @@ where
         //todo timeout
         while GoReg(self.read(Register::Go)?).go() {}
 
-        let reg = self.status()?;
+        let reg = StatusReg(self.status()?);
         if reg.diagnostic_result() {
             return Err(DrvError::DeviceDiagnosticFailed);
         }
@@ -326,7 +328,7 @@ where
         //todo timeout
         while GoReg(self.read(Register::Go)?).go() {}
 
-        let reg = self.status()?;
+        let reg = StatusReg(self.status()?);
         if reg.diagnostic_result() {
             return Err(DrvError::CalibrationFailed);
         }
@@ -341,6 +343,7 @@ where
     }
 }
 
+/// Possible runtime errors
 #[allow(unused)]
 #[derive(Debug)]
 pub enum DrvError {
@@ -350,7 +353,6 @@ pub enum DrvError {
     DeviceDiagnosticFailed,
     CalibrationFailed,
     OTPNotProgrammed,
-    WrongCalibrationEnum,
 }
 
 /// The hardcoded address of the driver.  All drivers share the same address so
@@ -358,7 +360,7 @@ pub enum DrvError {
 /// same waveform
 const ADDRESS: u8 = 0x5a;
 
-/// Choose calibration method during driver construction
+/// Selection of calibration options required for initial device construction
 pub enum Calibration {
     /// Many calibration params can be defaulted, and maybe the entire thing for
     /// some ERM motors. Required params for LRA motors especially though should
@@ -375,27 +377,26 @@ pub enum Calibration {
     Otp,
 }
 
-/// Computed calibration parameters. Provide previously calculated parameters
-/// during construction, or after read back the calibrated values for hardcoding
-/// after succsesfully Auto calibration.s
+/// Previously computed calibration parameters. Can be fetched after calibration
+/// and hardcoded during construction instead of auto calibration.
 pub struct LoadParams {
-    /// Automatic Compensation for Resistive Losses
-    pub comp: u8,
+    /// Auto-Calibration Compensation Result
+    pub compenstation: u8,
     /// Auto-Calibration Back-EMF Result
-    pub bemf: u8,
+    pub back_emf: u8,
     /// Auto-Calibration BEMF_GAIN Result
-    pub gain: u8,
+    pub back_emf_gain: u8,
 }
 
-/// Calibration Parameters for both motor ERM and LRA motor types. Some params
-/// really need to be computed from the drv2605l and motor datashets, especially
-/// for LRA motors.
+/// Calibration configuration for both ERM and LRA motor types. Some params
+/// really need to be computed from the drv2605l and motor datasheets, especially
+/// for LRA motors
 #[non_exhaustive]
 pub struct CalibrationParams {
     /// Required: Datasheet 8.5.2.1 Rated Voltage Programming
-    pub rated: u8,
+    pub rated_voltage: u8,
     /// Required: Datasheet 8.5.2.2 Overdrive Voltage-Clamp Programming
-    pub clamp: u8,
+    pub overdrive_voltage_clamp: u8,
     /// Required: Datasheet 8.5.1.1 Drive-Time Programming
     pub drive_time: u8,
     /// Default advised: Brake Factor
@@ -424,32 +425,32 @@ impl Default for CalibrationParams {
             lra_idiss_time: 1,
             auto_cal_time: 3,
             lra_zc_det_time: 0,
-            rated: 0x3E,
-            clamp: 0x8C,
+            rated_voltage: 0x3E,
+            overdrive_voltage_clamp: 0x8C,
             drive_time: 0x13,
         }
     }
 }
 
-/// The purpose of the functionality is to add time stretching (or time
-/// shrinking) to the waveform. Defaults are totally fine.
+/// Advanced configuration for rom waveforms offering time stretching (or time
+/// shrinking) to the built in waveforms
 #[derive(Debug, Clone, Copy)]
-pub struct RomOptions {
+pub struct RomParams {
     /// Overdrive Time Offset (ms) = overdrive_time * playback_interval
-    overdrive_time_offset: u8,
+    pub overdrive_time_offset: u8,
     /// Sustain-Time Positive Offset (ms) = sustain_positive_offset * playback_interval
-    sustain_positive_offset: u8,
+    pub sustain_positive_offset: u8,
     /// Sustain-Time Negative Offset (ms) = sustain_negative_time * playback_interval
-    sustain_negative_offset: u8,
+    pub sustain_negative_offset: u8,
     /// Bake Time Offset (ms) = brake_time_offset * playback_interval
-    brake_time_offset: u8,
+    pub brake_time_offset: u8,
     /// Default Playback Interval. By default each waveform in memory has a
     /// granularity of 5 ms, but can be decreased to 1ms by enabling
     /// decrease_playback_interval to 1ms
-    decrease_playback_interval: bool,
+    pub decrease_playback_interval: bool,
 }
 
-impl Default for RomOptions {
+impl Default for RomParams {
     fn default() -> Self {
         Self {
             overdrive_time_offset: 0,
@@ -461,6 +462,7 @@ impl Default for RomOptions {
     }
 }
 
+/// Selection of modes of device operation, some of which take their configuration via the enum
 #[derive(Debug, Clone, Copy)]
 pub enum Mode {
     /// Select the Immersion TS2200 library that matches your motor
@@ -468,7 +470,7 @@ pub enum Mode {
     /// all ERM libraries are tuned for open loop.
     ///
     /// Use set rom setters and then GO bit to play an `Effect`
-    Rom(Library, RomOptions),
+    Rom(Library, RomParams),
     /// Enable Pulse Width Modulated mod (closed loop unidirectional )
     ///
     /// 0% full braking, 50% 1/2 Rated Voltage, 100% Rated Voltage

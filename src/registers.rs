@@ -191,6 +191,9 @@ impl Default for ModeReg {
     }
 }
 
+/// Selection of Library of built-in waveforms. Each library offers all the same
+/// waveforms, but is tuned to work for different motors so it is important to
+/// choose the correct library for your motor characteristics
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Library {
     /// No library selected
@@ -374,8 +377,8 @@ impl From<Effect> for u8 {
     }
 }
 
-/// Identifies which of the waveforms from the ROM library that should
-/// be played in a given waveform slot.
+/// Selection of built-in waveforms that can be sequenced using the `set_rom`
+/// and `set_rom_single` function and triggered using the `set_go` function
 #[allow(unused)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Effect {

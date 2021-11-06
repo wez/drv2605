@@ -8,7 +8,7 @@ extern crate metro_m0 as hal;
 extern crate panic_rtt;
 
 use cortex_m_rt::entry;
-use drv2605::{Calibration, CalibrationParams, Drv2605l, Effect, Library, Mode, RomOptions};
+use drv2605::{Calibration, CalibrationParams, Drv2605l, Effect, Library, Mode, RomParams};
 use hal::clock::GenericClockController;
 use hal::delay::Delay;
 use hal::prelude::*;
@@ -57,16 +57,18 @@ fn main() -> ! {
     // Or lra autocalibration would look like this.
     // let mut calib = CalibrationParams::default();
     // these are tricky and are computed from the lra motor and drv2605l datasheets
-    // calib.rated = 0x3E;
-    // calib.clamp = 0x8C;
+    // calib.rated_voltage = 0x3E;
+    // calib.overdrive_voltage_clamp = 0x8C;
     // calib.drive_time = 0x13;
     // let mut haptic = Drv2605l::new(i2c, Calibration::Auto(calib), false).unwrap();
 
     // print the sucessful calibration values so you can hardcode them
     // let params = haptic.calibration().unwrap();
-    // info!(
-    //     "comp:{} bemf:{} gain:{}",
-    //     params.comp, params.bemf, params.gain
+    // dbgprint!(
+    //     "compenstation:{} back_emf:{} back_emf_gain:{}",
+    //     params.compenstation,
+    //     params.back_emf,
+    //     params.back_emf_gain
     // );
 
     // and hardcode them instead of using calibration like this
@@ -74,20 +76,20 @@ fn main() -> ! {
     //     i2c,
     //     //from the
     //     Calibration::Load(drv2605::LoadParams {
-    //         comp: 0x3E,
-    //         bemf: 0x89,
-    //         gain: 0x25,
+    //         compenstation: 0x3E,
+    //         back_emf: 0x89,
+    //         back_emf_gain: 0x25,
     //     }),
     //     false,
     // )
     // .unwrap();
-    dbgprint!("device successfully init");
+    // dbgprint!("device successfully init");
 
     // rom mode using built in effects. Each library has all the same
     // vibrations, but is tuned to work for certain motor characteristics so its
     // important to choose Library for for your motor characteristics
     haptic
-        .set_mode(Mode::Rom(Library::B, RomOptions::default()))
+        .set_mode(Mode::Rom(Library::B, RomParams::default()))
         .unwrap();
 
     // set one effect to happen when go bit enabled
