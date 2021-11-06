@@ -19,7 +19,10 @@ where
     I2C: WriteRead<Error = E> + Write<Error = E>,
 {
     /// Returns a calibrated Drv2605l device configured to standby mode for
-    /// power savings. Use a `set_mode` and `set_go` to trigger a vibration.
+    /// power savings. Closed loop is hardcoded for all motors and modes except
+    /// ERM motors in rom mode where open loop is automatically enabled.
+    ///
+    /// Use a `set_mode` and `set_go` to trigger a vibration.
     pub fn new(i2c: I2C, calibration: Calibration, lra: bool) -> Result<Self, DrvError> {
         let mut haptic = Self { i2c, lra };
         haptic.check_id(7)?;
@@ -71,18 +74,16 @@ where
     }
 
     /// Select the Immersion TS2200 library that matches your motor
-    /// characteristic. Afterwards set the rom(s) and thn GO bit to play
+    /// characteristic. For ERM Motors, open loop operation will be enabled as
+    /// all ERM libraries are tuned for open loop.
+    ///
+    /// Use set rom setters and then GO bit to play an `Effect`
     pub fn set_mode_rom(&mut self, library: Library) -> Result<(), DrvError> {
-        if !self.lra && library == Library::Lra {
-            return Err(DrvError::WrongMotorType);
-        }
         let mut mode = ModeReg(self.read(Register::Mode)?);
         mode.set_mode(Mode::InternalTrigger as u8);
         self.write(Register::Mode, mode.0)?;
 
         if !self.lra {
-            // Library A is open loop ONLY, but also says all seem to prefer open
-            // loop for ERM
             self.set_open_loop(true)?;
         } else {
             self.set_open_loop(false)?;
@@ -128,10 +129,12 @@ where
             .map_err(|_| DrvError::ConnectionError)
     }
 
-    /// Device accepts an analog voltage at the IN/TRIG pin until mode change or
-    /// standby. The reference voltage in standby mode is 1.8 V thus 100% is
-    /// 1.8V, 50% is .9V, 0% is 0V analogous to the duty-cycle percentage in
-    /// PWM mode
+    /// Set analog input mode.
+    ///
+    /// Send an analog voltage to the IN/TRIG to set a duty cycle which will
+    /// persist until mode change or standby. The reference voltage in standby
+    /// mode is 1.8 V thus 100% is 1.8V, 50% is .9V, 0% is 0V analogous to the
+    /// duty-cycle percentage in PWM mode
     pub fn set_mode_analog(&mut self) -> Result<(), DrvError> {
         self.set_open_loop(false)?;
 
@@ -144,7 +147,9 @@ where
         self.write(Register::Mode, mode.0)
     }
 
-    /// Device accepts PWM data at the IN/TRIG pin
+    /// Enable Pulse Width Modulated mod (closed loop unidirectional )
+    ///
+    /// 0% full braking, 50% 1/2 Rated Voltage, 100% Rated Voltage
     pub fn set_mode_pwm(&mut self) -> Result<(), DrvError> {
         self.set_open_loop(false)?;
 
@@ -157,13 +162,16 @@ where
         self.write(Register::Mode, mode.0)
     }
 
-    /// Plays duty cycle set with `set_rtp` until another call to `set_rtp`, or
-    /// mode change
+    /// Enable Real Time Playback (closed loop unidirectional unsigned )
+    ///
+    /// Use `set_rtp` to update the duty cycle which will persist until another
+    /// call to `set_rtp`, change to standby, or mode change.
+    /// 0x00 full braking, 0x7F 1/2 Rated Voltage, 0xFF Rated Voltage
     pub fn set_mode_rtp(&mut self) -> Result<(), DrvError> {
         self.set_open_loop(false)?;
 
         let mut ctrl3 = Control3Reg(self.read(Register::Control3)?);
-        // unsigned. todo do we need to unset?
+        // We don't need to unset as no other modes use this bit
         ctrl3.set_data_format_rtp(true);
         self.write(Register::Control3, ctrl3.0)?;
 
@@ -416,19 +424,20 @@ pub enum DrvError {
 /// The hardcoded address of the driver.  All drivers share the same address so
 /// that it is possible to broadcast on the bus and have multiple units emit the
 /// same waveform
-pub const ADDRESS: u8 = 0x5a;
+const ADDRESS: u8 = 0x5a;
 
 // Choose calibration method during driver construction
 pub enum Calibration {
     /// Many calibration params can be defaulted, and maybe the entire thing for
-    /// some ERM motors. LRA motors especially though are required to be
+    /// some ERM motors. Required params for LRA motors especially though should
     /// calculated from the drv2605l and motor datasheet.
     ///
-    /// NOTE: When using autocalibration be sure to secure the motor to some
-    /// kind of mass. It can't calibrate if its jumping around on a board or a
-    /// desk.
+    /// NOTE: In general, but when doing autocalibration, be sure to secure the
+    /// motor to some kind of mass. It can't calibrate if its jumping around on
+    /// a board or a desk.
     Auto(CalibrationParams),
-    // Load previously calibrated values
+    // Load previously calibrated values. It is common to do an autocalibration
+    // and then read back the calibration parameters so you can hardcode them
     Load(LoadParams),
     // Values were previously programmed into nonvolatile memory. This is not common.
     Otp,
@@ -438,34 +447,39 @@ pub enum Calibration {
 // during construction, or after read back the calibrated values for hardcoding
 // after succsesfully Auto calibration.s
 pub struct LoadParams {
-    // Automatic Compensation for Resistive Losses
+    /// Automatic Compensation for Resistive Losses
     pub comp: u8,
-    // Auto-Calibration Back-EMF Result
+    /// Auto-Calibration Back-EMF Result
     pub bemf: u8,
-    // Auto-Calibration BEMF_GAIN Result
+    /// Auto-Calibration BEMF_GAIN Result
     pub gain: u8,
 }
 
-/// Calibration Parameters for both motor erm and lra motor types. Some params
-/// really need to be computed from the drv2605l and motor datashets, especiall
+/// Calibration Parameters for both motor ERM and LRA motor types. Some params
+/// really need to be computed from the drv2605l and motor datashets, especially
 /// for LRA motors.
 #[non_exhaustive]
 pub struct CalibrationParams {
-    // These fields generally shouldn't need changing from defaults
-    pub brake_factor: u8,
-    pub loop_gain: u8,
-    pub lra_sample_time: u8,
-    pub lra_blanking_time: u8,
-    pub lra_idiss_time: u8,
-    pub auto_cal_time: u8,
-    pub lra_zc_det_time: u8,
-    /// These are the required fields for calibration
-    /// Datasheet 8.5.2.1 Rated Voltage Programming
+    /// Required: Datasheet 8.5.2.1 Rated Voltage Programming
     pub rated: u8,
-    // Datasheet 8.5.2.2 Overdrive Voltage-Clamp Programming
+    /// Required: Datasheet 8.5.2.2 Overdrive Voltage-Clamp Programming
     pub clamp: u8,
-    // Datasheet 8.5.1.1 Drive-Time Programming
+    /// Required: Datasheet 8.5.1.1 Drive-Time Programming
     pub drive_time: u8,
+    /// Default advised: Brake Factor
+    pub brake_factor: u8,
+    /// Default advised: Loop-Gain Control
+    pub loop_gain: u8,
+    /// Default advised: Auto Calibration Time Adjustment
+    pub auto_cal_time: u8,
+    /// Default advised: LRA auto-resonance sampling time
+    pub lra_sample_time: u8,
+    /// Default advised: LRA auto-resonance sampling time
+    pub lra_blanking_time: u8,
+    /// Default advised: LRA Current dissipation time
+    pub lra_idiss_time: u8,
+    /// Default advised: LRA Zero Crossing Detect
+    pub lra_zc_det_time: u8,
 }
 
 impl Default for CalibrationParams {
