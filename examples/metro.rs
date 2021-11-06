@@ -8,7 +8,7 @@ extern crate metro_m0 as hal;
 extern crate panic_rtt;
 
 use cortex_m_rt::entry;
-use drv2605::{Calibration, CalibrationParams, Drv2605l, Effect, Library, Mode};
+use drv2605::{Calibration, CalibrationParams, Drv2605l, Effect, Library, Mode, RomOptions};
 use hal::clock::GenericClockController;
 use hal::delay::Delay;
 use hal::prelude::*;
@@ -86,7 +86,9 @@ fn main() -> ! {
     // rom mode using built in effects. Each library has all the same
     // vibrations, but is tuned to work for certain motor characteristics so its
     // important to choose Library for for your motor characteristics
-    haptic.set_mode(Mode::Rom(Library::B)).unwrap();
+    haptic
+        .set_mode(Mode::Rom(Library::B, RomOptions::default()))
+        .unwrap();
 
     // set one effect to happen when go bit enabled
     haptic

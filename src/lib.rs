@@ -2,9 +2,13 @@
 
 mod registers;
 use embedded_hal::blocking::i2c::{Write, WriteRead};
+use registers::{
+    BrakeTimeOffsetReg, OverdriveTimeOffsetReg, SustainTimeOffsetNegativeReg,
+    SustainTimeOffsetPositiveReg,
+};
 pub use registers::{
-    Control1Reg, Control2Reg, Control3Reg, Control4Reg, Effect, FeedbackControlReg, GoReg, Library,
-    LibrarySelectionReg, ModeReg, Register, StatusReg,
+    Control1Reg, Control2Reg, Control3Reg, Control4Reg, Control5Reg, Effect, FeedbackControlReg,
+    GoReg, Library, LibrarySelectionReg, ModeReg, Register, StatusReg,
 };
 
 pub struct Drv2605l<I2C, E>
@@ -91,7 +95,29 @@ where
                 m.set_mode(registers::Mode::PwmInputAndAnalogInput as u8);
                 self.write(Register::Mode, m.0)
             }
-            Mode::Rom(library) => {
+            Mode::Rom(library, options) => {
+                let mut ctrl5 = Control5Reg(self.read(Register::Control5)?);
+                ctrl5.set_playback_interval(options.decrease_playback_interval);
+                self.write(Register::Control5, ctrl5.0)?;
+
+                let mut overdrive = OverdriveTimeOffsetReg::default();
+                self.write(Register::OverdriveTimeOffset, options.overdrive_time_offset)?;
+
+                let mut sustain_p = SustainTimeOffsetPositiveReg::default();
+                self.write(
+                    Register::SustainTimeOffsetPositive,
+                    options.sustain_positive_offset,
+                )?;
+
+                let mut sustain_n = SustainTimeOffsetNegativeReg::default();
+                self.write(
+                    Register::SustainTimeOffsetNegative,
+                    options.sustain_negative_offset,
+                )?;
+
+                let mut brake = BrakeTimeOffsetReg::default();
+                self.write(Register::BrakeTimeOffset, options.brake_time_offset)?;
+
                 // erm requires open loop mode
                 if !self.lra {
                     ctrl3.set_erm_open_loop(true);
@@ -406,13 +432,41 @@ impl Default for CalibrationParams {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub struct RomOptions {
+    /// Overdrive Time Offset (ms) = overdrive_time * playback_interval
+    overdrive_time_offset: u8,
+    /// Sustain-Time Positive Offset (ms) = sustain_positive_offset * playback_interval
+    sustain_positive_offset: u8,
+    /// Sustain-Time Negative Offset (ms) = sustain_negative_time * playback_interval
+    sustain_negative_offset: u8,
+    /// Bake Time Offset (ms) = brake_time_offset * playback_interval
+    brake_time_offset: u8,
+    /// Default Playback Interval. By default each waveform in memory has a
+    /// granularity of 5 ms, but can be decreased to 1ms by enabling
+    /// decrease_playback_interval to 1ms
+    decrease_playback_interval: bool,
+}
+
+impl Default for RomOptions {
+    fn default() -> Self {
+        Self {
+            overdrive_time_offset: 0,
+            sustain_positive_offset: 0,
+            sustain_negative_offset: 0,
+            brake_time_offset: 0,
+            decrease_playback_interval: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub enum Mode {
     /// Select the Immersion TS2200 library that matches your motor
     /// characteristic. For ERM Motors, open loop operation will be enabled as
     /// all ERM libraries are tuned for open loop.
     ///
     /// Use set rom setters and then GO bit to play an `Effect`
-    Rom(Library),
+    Rom(Library, RomOptions),
     /// Enable Pulse Width Modulated mod (closed loop unidirectional )
     ///
     /// 0% full braking, 50% 1/2 Rated Voltage, 100% Rated Voltage

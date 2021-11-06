@@ -145,6 +145,42 @@ impl Default for AutoCalibrationCompensationBackEmfReg {
     }
 }
 
+#[derive(Debug)]
+pub struct OverdriveTimeOffsetReg(pub u8);
+
+impl Default for OverdriveTimeOffsetReg {
+    fn default() -> Self {
+        Self(0x0)
+    }
+}
+
+#[derive(Debug)]
+pub struct SustainTimeOffsetPositiveReg(pub u8);
+
+impl Default for SustainTimeOffsetPositiveReg {
+    fn default() -> Self {
+        Self(0x0)
+    }
+}
+
+#[derive(Debug)]
+pub struct SustainTimeOffsetNegativeReg(pub u8);
+
+impl Default for SustainTimeOffsetNegativeReg {
+    fn default() -> Self {
+        Self(0x0)
+    }
+}
+
+#[derive(Debug)]
+pub struct BrakeTimeOffsetReg(pub u8);
+
+impl Default for BrakeTimeOffsetReg {
+    fn default() -> Self {
+        Self(0x0)
+    }
+}
+
 impl Default for ModeReg {
     fn default() -> Self {
         let mut reg = Self(0);
@@ -900,6 +936,50 @@ impl Default for Control4Reg {
         let mut reg = Self(0);
         reg.set_auto_cal_time(0x2);
         reg.set_otp_program(false);
+        reg
+    }
+}
+
+bitfield! {
+    pub struct Control5Reg(u8);
+    impl Debug;
+
+    /// This bit selects number of cycles required to attempt synchronization
+    /// before transitioning to open loop when the LRA_AUTO_OPEN_LOOP bit is
+    /// asserted,
+    /// 0: 3 attempts (Default)
+    /// 1: 4 attempts
+    /// 2: 5 attempts
+    /// 3: 6 attempts
+    pub auto_ol_cnt, set_auto_ol_cnt: 7, 6;
+
+    /// This bit selects the automatic transition to open-loop drive when a
+    /// back-EMF signal is not detected (LRA only).
+    ///
+    /// 0: Never transitions to open loop (Default)
+    /// 1: Automatically transitions to open loop
+    pub lra_auto_open_loop, set_lra_auto_open_loop: 5;
+
+    /// This bit selects the memory playback interval
+    /// 0: 5ms (Default)
+    /// 1: 1ms
+    pub playback_interval, set_playback_interval: 4;
+
+    /// Thhis bit sets the MSB for the BLANKING_TIME[3:0]. See the
+    /// BLANKING_TIME[3:0] bit in the Control2 (Address: 0x1C) section for details.
+    /// Advanced use only.
+    pub blanking_time_msb, set_blanking_time_mss: 3,2;
+
+    /// This bit sets the MSB for IDISS_TIME[3:0]. See the IDISS_TIME[1:0] bit
+    /// in the Control2 section for details. Advanced use only
+    pub idiss_time_msb, set_idiss_time_msb: 1;
+
+}
+
+impl Default for Control5Reg {
+    fn default() -> Self {
+        let mut reg = Self(0);
+        reg.set_auto_ol_cnt(0x2);
         reg
     }
 }
