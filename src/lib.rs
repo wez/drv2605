@@ -4,7 +4,7 @@ mod registers;
 use embedded_hal::blocking::i2c::{Write, WriteRead};
 pub use registers::{
     Control1Reg, Control2Reg, Control3Reg, Control4Reg, Effect, FeedbackControlReg, GoReg, Library,
-    LibrarySelectionReg, ModeReg, Register, StatusReg, WaveformReg,
+    LibrarySelectionReg, ModeReg, Register, StatusReg,
 };
 
 pub struct Drv2605l<I2C, E>
@@ -133,33 +133,31 @@ where
 
     /// Sets up to 8 Effects to play in order when `set_go` is called. Stops
     /// playing early if `Effect::None` is used.
+    /// todo dont hardcode to 8, pass slice?
     pub fn set_rom(&mut self, roms: &[Effect; 8]) -> Result<(), DrvError> {
-        // Todo The MSB of each sequence register can implement a delay between
-        // sequence waveforms. When the MSB is high, bits [6:0] indicate the
-        // length of the wait time. The wait time for that step then becomes
-        // WAV_FRM_SEQ[6:0] × 10 ms
         let buf: [u8; 9] = [
             Register::WaveformSequence0 as u8,
-            roms[0] as u8,
-            roms[1] as u8,
-            roms[2] as u8,
-            roms[3] as u8,
-            roms[4] as u8,
-            roms[5] as u8,
-            roms[6] as u8,
-            roms[7] as u8,
+            roms[0].into(),
+            roms[1].into(),
+            roms[2].into(),
+            roms[3].into(),
+            roms[4].into(),
+            roms[5].into(),
+            roms[6].into(),
+            roms[7].into(),
         ];
         self.i2c
             .write(ADDRESS, &buf)
             .map_err(|_| DrvError::ConnectionError)
     }
 
-    /// Set a single Rom to play during rom mode when `set_go` is called
-    pub fn set_rom_single(&mut self, effect: Effect) -> Result<(), DrvError> {
+    /// Set a single `Effect` into rom storage
+    /// during rom mode when `set_go` is called
+    pub fn set_rom_single(&mut self, rom: Effect) -> Result<(), DrvError> {
         let buf: [u8; 3] = [
             Register::WaveformSequence0 as u8,
-            WaveformReg::new_effect(effect).0,
-            WaveformReg::new_stop().0,
+            rom.into(),
+            Effect::Stop.into(),
         ];
         self.i2c
             .write(ADDRESS, &buf)

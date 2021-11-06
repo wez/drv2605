@@ -92,16 +92,16 @@ fn main() -> ! {
     haptic
         .set_rom_single(Effect::TransitionRampDownLongSmoothOne100to0)
         .unwrap();
-    // or you could set several
+    // or you could set a sequence of up to 8 Effects including delays
     // let roms = [
     //     Effect::StrongClick100,
-    //     Effect::BuzzOne100,
+    //     Effect::Delays(10),
     //     Effect::StrongClick100,
-    //     Effect::BuzzOne100,
+    //     Effect::Delays(100),
     //     Effect::StrongClick100,
-    //     Effect::BuzzOne100,
-    //     Effect::TransitionRampDownLongSmoothOne100to0,
-    //     Effect::None, //stop early
+    //     Effect::Stop, //stop early
+    //     Effect::Stop, //stop early
+    //     Effect::Stop, //stop early
     // ];
     // haptic.set_rom(&roms).unwrap();
 

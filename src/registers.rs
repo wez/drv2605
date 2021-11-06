@@ -206,259 +206,393 @@ bitfield! {
     pub into Library, library_selection, set_library_selection: 2, 0;
 }
 
+impl From<Effect> for u8 {
+    fn from(val: Effect) -> Self {
+        match val {
+            Effect::Delays(n) => n & 0x80,
+            Effect::Stop => 0,
+            Effect::StrongClick100 => 1,
+            Effect::StrongClick60 => 2,
+            Effect::StrongClick30 => 3,
+            Effect::SharpClick100 => 4,
+            Effect::SharpClick60 => 5,
+            Effect::SharpClick30 => 6,
+            Effect::SoftBump100 => 7,
+            Effect::SoftBump60 => 8,
+            Effect::SoftBump30 => 9,
+            Effect::DoubleClick100 => 10,
+            Effect::DoubleClick60 => 11,
+            Effect::TripleClick100 => 12,
+            Effect::SoftFuzz60 => 13,
+            Effect::StrongBuzz100 => 14,
+            Effect::Alert750ms => 15,
+            Effect::Alert1000ms => 16,
+            Effect::StrongClickOne100 => 17,
+            Effect::StrongClickTwo80 => 18,
+            Effect::StrongClickThree60 => 19,
+            Effect::StrongClickFour30 => 20,
+            Effect::MediumClickOne100 => 21,
+            Effect::MediumClickTwo80 => 22,
+            Effect::MediumClickThree60 => 23,
+            Effect::SharpTickOne100 => 24,
+            Effect::SharpTickTwo80 => 25,
+            Effect::SharpTickThree60 => 26,
+            Effect::ShortDoubleClickStrongOne100 => 27,
+            Effect::ShortDoubleClickStrongTwo80 => 28,
+            Effect::ShortDoubleClickStrongThree60 => 29,
+            Effect::ShortDoubleClickStrongFour30 => 30,
+            Effect::ShortDoubleClickMediumOne100 => 31,
+            Effect::ShortDoubleClickMediumTwo80 => 32,
+            Effect::ShortDoubleClickMediumThree60 => 33,
+            Effect::ShortDoubleSharpTickOne100 => 34,
+            Effect::ShortDoubleSharpTickTwo80 => 35,
+            Effect::ShortDoubleSharpTickThree60 => 36,
+            Effect::LongDoubleSharpClickStrongOne100 => 37,
+            Effect::LongDoubleSharpClickStrongTwo80 => 38,
+            Effect::LongDoubleSharpClickStrongThree60 => 39,
+            Effect::LongDoubleSharpClickStrongFour30 => 40,
+            Effect::LongDoubleSharpClickMediumOne100 => 41,
+            Effect::LongDoubleSharpClickMediumTwo80 => 42,
+            Effect::LongDoubleSharpClickMediumThree60 => 43,
+            Effect::LongDoubleSharpTickOne100 => 44,
+            Effect::LongDoubleSharpTickTwo80 => 45,
+            Effect::LongDoubleSharpTickThree60 => 46,
+            Effect::BuzzOne100 => 47,
+            Effect::BuzzTwo80 => 48,
+            Effect::BuzzThree60 => 49,
+            Effect::BuzzFour40 => 50,
+            Effect::BuzzFive20 => 51,
+            Effect::PulsingStrongOne100 => 52,
+            Effect::PulsingStrongTwo60 => 53,
+            Effect::PulsingMediumOne100 => 54,
+            Effect::PulsingMediumTwo60 => 55,
+            Effect::PulsingSharpOne100 => 56,
+            Effect::PulsingSharpTwo60 => 57,
+            Effect::TransitionClickOne100 => 58,
+            Effect::TransitionClickTwo80 => 59,
+            Effect::TransitionClickThree60 => 60,
+            Effect::TransitionClickFour40 => 61,
+            Effect::TransitionClickFive20 => 62,
+            Effect::TransitionClickSix10 => 63,
+            Effect::TransitionHumOne100 => 64,
+            Effect::TransitionHumTwo80 => 65,
+            Effect::TransitionHumThree60 => 66,
+            Effect::TransitionHumFour40 => 67,
+            Effect::TransitionHumFive20 => 68,
+            Effect::TransitionHumSix10 => 69,
+            Effect::TransitionRampDownLongSmoothOne100to0 => 70,
+            Effect::TransitionRampDownLongSmoothTwo100to0 => 71,
+            Effect::TransitionRampDownMediumSmoothOne100to0 => 72,
+            Effect::TransitionRampDownMediumSmoothTwo100to0 => 73,
+            Effect::TransitionRampDownShortSmoothOne100to0 => 74,
+            Effect::TransitionRampDownShortSmoothTwo100to0 => 75,
+            Effect::TransitionRampDownLongSharpOne100to0 => 76,
+            Effect::TransitionRampDownLongSharpTwo100to0 => 77,
+            Effect::TransitionRampDownMediumSharpOne100to0 => 78,
+            Effect::TransitionRampDownMediumSharpTwo100to0 => 79,
+            Effect::TransitionRampDownShortSharpOne100to0 => 80,
+            Effect::TransitionRampDownShortSharpTwo100to0 => 81,
+            Effect::TransitionRampUpLongSmoothOne0to100 => 82,
+            Effect::TransitionRampUpLongSmoothTwo0to100 => 83,
+            Effect::TransitionRampUpMediumSmoothOne0to100 => 84,
+            Effect::TransitionRampUpMediumSmoothTwo0to100 => 85,
+            Effect::TransitionRampUpShortSmoothOne0to100 => 86,
+            Effect::TransitionRampUpShortSmoothTwo0to100 => 87,
+            Effect::TransitionRampUpLongSharpOne0to100 => 88,
+            Effect::TransitionRampUpLongSharpTwo0to100 => 89,
+            Effect::TransitionRampUpMediumSharpOne0to100 => 90,
+            Effect::TransitionRampUpMediumSharpTwo0to100 => 91,
+            Effect::TransitionRampUpShortSharpOne0to100 => 92,
+            Effect::TransitionRampUpShortSharpTwo0to100 => 93,
+            Effect::TransitionRampDownLongSmoothOne50to0 => 94,
+            Effect::TransitionRampDownLongSmoothTwo50to0 => 95,
+            Effect::TransitionRampDownMediumSmoothOne50to0 => 96,
+            Effect::TransitionRampDownMediumSmoothTwo50to0 => 97,
+            Effect::TransitionRampDownShortSmoothOne50to0 => 98,
+            Effect::TransitionRampDownShortSmoothTwo50to0 => 99,
+            Effect::TransitionRampDownLongSharpOne50to0 => 100,
+            Effect::TransitionRampDownLongSharpTwo50to0 => 101,
+            Effect::TransitionRampDownMediumSharpOne50to0 => 102,
+            Effect::TransitionRampDownMediumSharpTwo50to0 => 103,
+            Effect::TransitionRampDownShortSharpOne50to0 => 104,
+            Effect::TransitionRampDownShortSharpTwo50to0 => 105,
+            Effect::TransitionRampUpLongSmoothOne0to50 => 106,
+            Effect::TransitionRampUpLongSmoothTwo0to50 => 107,
+            Effect::TransitionRampUpMediumSmoothOne0to50 => 108,
+            Effect::TransitionRampUpMediumSmoothTwo0to50 => 109,
+            Effect::TransitionRampUpShortSmoothOne0to50 => 110,
+            Effect::TransitionRampUpShortSmoothTwo0to50 => 111,
+            Effect::TransitionRampUpLongSharpOne0to50 => 112,
+            Effect::TransitionRampUpLongSharpTwo0to50 => 113,
+            Effect::TransitionRampUpMediumSharpOne0to50 => 114,
+            Effect::TransitionRampUpMediumSharpTwo0to50 => 115,
+            Effect::TransitionRampUpShortSharpOne0to50 => 116,
+            Effect::TransitionRampUpShortSharpTwo0to50 => 117,
+            Effect::LongBuzzForProgrammaticStopping100 => 118,
+            Effect::SmoothHumOne50 => 119,
+            Effect::SmoothHumTwo40 => 120,
+            Effect::SmoothHumThree30 => 121,
+            Effect::SmoothHumFour20 => 122,
+            Effect::SmoothHumFive10 => 123,
+        }
+    }
+}
+
 /// Identifies which of the waveforms from the ROM library that should
 /// be played in a given waveform slot.
 #[allow(unused)]
 #[derive(Debug, Clone, Copy)]
 pub enum Effect {
-    /// No effect
-    None = 0,
+    /// No effect, or Stop playing
+    Stop,
+    /// Use the effect period as (up to 127) counts of 10ms delays
+    Delays(u8),
     /// Strong Click - 100%
-    StrongClick100 = 1,
+    StrongClick100,
     /// Strong Click - 60%
-    StrongClick60 = 2,
+    StrongClick60,
     /// Strong Click - 30%
-    StrongClick30 = 3,
+    StrongClick30,
     /// Sharp Click - 100%
-    SharpClick100 = 4,
+    SharpClick100,
     /// Sharp Click - 60%
-    SharpClick60 = 5,
+    SharpClick60,
     /// Sharp Click - 30%
-    SharpClick30 = 6,
+    SharpClick30,
     /// Soft Bump - 100%
-    SoftBump100 = 7,
+    SoftBump100,
     /// Soft Bump - 60%
-    SoftBump60 = 8,
+    SoftBump60,
     /// Soft Bump - 30%
-    SoftBump30 = 9,
+    SoftBump30,
     /// Double Click - 100%
-    DoubleClick100 = 10,
+    DoubleClick100,
     /// Double Click - 60%
-    DoubleClick60 = 11,
+    DoubleClick60,
     /// Triple Click - 100%
-    TripleClick100 = 12,
+    TripleClick100,
     /// Soft Fuzz - 60%
-    SoftFuzz60 = 13,
+    SoftFuzz60,
     /// Strong Buzz - 100%
-    StrongBuzz100 = 14,
+    StrongBuzz100,
     /// 750 ms Alert 100%
-    Alert750ms = 15,
+    Alert750ms,
     /// 1000 ms Alert 100%
-    Alert1000ms = 16,
+    Alert1000ms,
     /// Strong Click 1 - 100%
-    StrongClickOne100 = 17,
+    StrongClickOne100,
     /// Strong Click 2 - 80%
-    StrongClickTwo80 = 18,
+    StrongClickTwo80,
     /// Strong Click 3 - 60%
-    StrongClickThree60 = 19,
+    StrongClickThree60,
     /// Strong Click 4 - 30%
-    StrongClickFour30 = 20,
+    StrongClickFour30,
     /// Medium Click 1 - 100%
-    MediumClickOne100 = 21,
+    MediumClickOne100,
     /// Medium Click 2 - 80%
-    MediumClickTwo80 = 22,
+    MediumClickTwo80,
     /// Medium Click 3 - 60%
-    MediumClickThree60 = 23,
+    MediumClickThree60,
     /// Sharp Tick 1 - 100%
-    SharpTickOne100 = 24,
+    SharpTickOne100,
     /// Sharp Tick 2 - 80%
-    SharpTickTwo80 = 25,
+    SharpTickTwo80,
     /// Sharp Tick 3 - 60%
-    SharpTickThree60 = 26,
+    SharpTickThree60,
     /// Short Double Click Strong 1 - 100%
-    ShortDoubleClickStrongOne100 = 27,
+    ShortDoubleClickStrongOne100,
     /// Short Double Click Strong 2 - 80%
-    ShortDoubleClickStrongTwo80 = 28,
+    ShortDoubleClickStrongTwo80,
     /// Short Double Click Strong 3 - 60%
-    ShortDoubleClickStrongThree60 = 29,
+    ShortDoubleClickStrongThree60,
     /// Short Double Click Strong 4 - 30%
-    ShortDoubleClickStrongFour30 = 30,
+    ShortDoubleClickStrongFour30,
     /// Short Double Click Medium 1 - 100%
-    ShortDoubleClickMediumOne100 = 31,
+    ShortDoubleClickMediumOne100,
     /// Short Double Click Medium 2 - 80%
-    ShortDoubleClickMediumTwo80 = 32,
+    ShortDoubleClickMediumTwo80,
     /// Short Double Click Medium 3 - 60%
-    ShortDoubleClickMediumThree60 = 33,
+    ShortDoubleClickMediumThree60,
     /// Short Double Sharp Tick 1 - 100%
-    ShortDoubleSharpTickOne100 = 34,
+    ShortDoubleSharpTickOne100,
     /// Short Double Sharp Tick 2 - 80%
-    ShortDoubleSharpTickTwo80 = 35,
+    ShortDoubleSharpTickTwo80,
     /// Short Double Sharp Tick 3 - 60%
-    ShortDoubleSharpTickThree60 = 36,
+    ShortDoubleSharpTickThree60,
     /// Long Double Sharp Click Strong 1 - 100%
-    LongDoubleSharpClickStrongOne100 = 37,
+    LongDoubleSharpClickStrongOne100,
     /// Long Double Sharp Click Strong 2 - 80%
-    LongDoubleSharpClickStrongTwo80 = 38,
+    LongDoubleSharpClickStrongTwo80,
     /// Long Double Sharp Click Strong 3 - 60%
-    LongDoubleSharpClickStrongThree60 = 39,
+    LongDoubleSharpClickStrongThree60,
     /// Long Double Sharp Click Strong 4 - 30%
-    LongDoubleSharpClickStrongFour30 = 40,
+    LongDoubleSharpClickStrongFour30,
     /// Long Double Sharp Click Medium 1 - 100%
-    LongDoubleSharpClickMediumOne100 = 41,
+    LongDoubleSharpClickMediumOne100,
     /// Long Double Sharp Click Medium 2 - 80%
-    LongDoubleSharpClickMediumTwo80 = 42,
+    LongDoubleSharpClickMediumTwo80,
     /// Long Double Sharp Click Medium 3 - 60%
-    LongDoubleSharpClickMediumThree60 = 43,
+    LongDoubleSharpClickMediumThree60,
     /// Long Double Sharp Tick 1 - 100%
-    LongDoubleSharpTickOne100 = 44,
+    LongDoubleSharpTickOne100,
     /// Long Double Sharp Tick 2 - 80%
-    LongDoubleSharpTickTwo80 = 45,
+    LongDoubleSharpTickTwo80,
     /// Long Double Sharp Tick 3 - 60%
-    LongDoubleSharpTickThree60 = 46,
+    LongDoubleSharpTickThree60,
     /// Buzz 1 - 100%
-    BuzzOne100 = 47,
+    BuzzOne100,
     /// Buzz 2 - 80%
-    BuzzTwo80 = 48,
+    BuzzTwo80,
     /// Buzz 3 - 60%
-    BuzzThree60 = 49,
+    BuzzThree60,
     /// Buzz 4 - 40%
-    BuzzFour40 = 50,
+    BuzzFour40,
     /// Buzz 5 - 20%
-    BuzzFive20 = 51,
+    BuzzFive20,
     /// Pulsing Strong 1 - 100%
-    PulsingStrongOne100 = 52,
+    PulsingStrongOne100,
     /// Pulsing Strong 2 - 60%
-    PulsingStrongTwo60 = 53,
+    PulsingStrongTwo60,
     /// Pulsing Medium 1 - 100%
-    PulsingMediumOne100 = 54,
+    PulsingMediumOne100,
     /// Pulsing Medium 2 - 60%
-    PulsingMediumTwo60 = 55,
+    PulsingMediumTwo60,
     /// Pulsing Sharp 1 - 100%
-    PulsingSharpOne100 = 56,
+    PulsingSharpOne100,
     /// Pulsing Sharp 2 - 60%
-    PulsingSharpTwo60 = 57,
+    PulsingSharpTwo60,
     /// Transition Click 1 - 100%
-    TransitionClickOne100 = 58,
+    TransitionClickOne100,
     /// Transition Click 2 - 80%
-    TransitionClickTwo80 = 59,
+    TransitionClickTwo80,
     /// Transition Click 3 - 60%
-    TransitionClickThree60 = 60,
+    TransitionClickThree60,
     /// Transition Click 4 - 40%
-    TransitionClickFour40 = 61,
+    TransitionClickFour40,
     /// Transition Click 5 - 20%
-    TransitionClickFive20 = 62,
+    TransitionClickFive20,
     /// Transition Click 6 - 10%
-    TransitionClickSix10 = 63,
+    TransitionClickSix10,
     /// Transition Hum 1 - 100%
-    TransitionHumOne100 = 64,
+    TransitionHumOne100,
     /// Transition Hum 2 - 80%
-    TransitionHumTwo80 = 65,
+    TransitionHumTwo80,
     /// Transition Hum 3 - 60%
-    TransitionHumThree60 = 66,
+    TransitionHumThree60,
     /// Transition Hum 4 - 40%
-    TransitionHumFour40 = 67,
+    TransitionHumFour40,
     /// Transition Hum 5 - 20%
-    TransitionHumFive20 = 68,
+    TransitionHumFive20,
     /// Transition Hum 6 - 10%
-    TransitionHumSix10 = 69,
+    TransitionHumSix10,
     /// Transition Ramp Down Long Smooth 1 - 100 to 0%
-    TransitionRampDownLongSmoothOne100to0 = 70,
+    TransitionRampDownLongSmoothOne100to0,
     /// Transition Ramp Down Long Smooth 2 - 100 to 0%
-    TransitionRampDownLongSmoothTwo100to0 = 71,
+    TransitionRampDownLongSmoothTwo100to0,
     /// Transition Ramp Down Medium Smooth 1 - 100 to 0%
-    TransitionRampDownMediumSmoothOne100to0 = 72,
+    TransitionRampDownMediumSmoothOne100to0,
     /// Transition Ramp Down Medium Smooth 2 - 100 to 0%
-    TransitionRampDownMediumSmoothTwo100to0 = 73,
+    TransitionRampDownMediumSmoothTwo100to0,
     /// Transition Ramp Down Short Smooth 1 - 100 to 0%
-    TransitionRampDownShortSmoothOne100to0 = 74,
+    TransitionRampDownShortSmoothOne100to0,
     /// Transition Ramp Down Short Smooth 2 - 100 to 0%
-    TransitionRampDownShortSmoothTwo100to0 = 75,
+    TransitionRampDownShortSmoothTwo100to0,
     /// Transition Ramp Down Long Sharp 1 - 100 to 0%
-    TransitionRampDownLongSharpOne100to0 = 76,
+    TransitionRampDownLongSharpOne100to0,
     /// Transition Ramp Down Long Sharp 2 - 100 to 0%
-    TransitionRampDownLongSharpTwo100to0 = 77,
+    TransitionRampDownLongSharpTwo100to0,
     /// Transition Ramp Down Medium Sharp 1 - 100 to 0%
-    TransitionRampDownMediumSharpOne100to0 = 78,
+    TransitionRampDownMediumSharpOne100to0,
     /// Transition Ramp Down Medium Sharp 2 - 100 to 0%
-    TransitionRampDownMediumSharpTwo100to0 = 79,
+    TransitionRampDownMediumSharpTwo100to0,
     /// Transition Ramp Down Short Sharp 1 - 100 to 0%
-    TransitionRampDownShortSharpOne100to0 = 80,
+    TransitionRampDownShortSharpOne100to0,
     /// Transition Ramp Down Short Sharp 2 - 100 to 0%
-    TransitionRampDownShortSharpTwo100to0 = 81,
+    TransitionRampDownShortSharpTwo100to0,
     /// Transition Ramp Up Long Smooth 1 - 0 to 100%
-    TransitionRampUpLongSmoothOne0to100 = 82,
+    TransitionRampUpLongSmoothOne0to100,
     /// Transition Ramp Up Long Smooth 2 - 0 to 100%
-    TransitionRampUpLongSmoothTwo0to100 = 83,
+    TransitionRampUpLongSmoothTwo0to100,
     /// Transition Ramp Up Medium Smooth 1 - 0 to 100%
-    TransitionRampUpMediumSmoothOne0to100 = 84,
+    TransitionRampUpMediumSmoothOne0to100,
     /// Transition Ramp Up Medium Smooth 2 - 0 to 100%
-    TransitionRampUpMediumSmoothTwo0to100 = 85,
+    TransitionRampUpMediumSmoothTwo0to100,
     /// Transition Ramp Up Short Smooth 1 - 0 to 100%
-    TransitionRampUpShortSmoothOne0to100 = 86,
+    TransitionRampUpShortSmoothOne0to100,
     /// Transition Ramp Up Short Smooth 2 - 0 to 100%
-    TransitionRampUpShortSmoothTwo0to100 = 87,
+    TransitionRampUpShortSmoothTwo0to100,
     /// Transition Ramp Up Long Sharp 1 - 0 to 100%
-    TransitionRampUpLongSharpOne0to100 = 88,
+    TransitionRampUpLongSharpOne0to100,
     /// Transition Ramp Up Long Sharp 2 - 0 to 100%
-    TransitionRampUpLongSharpTwo0to100 = 89,
+    TransitionRampUpLongSharpTwo0to100,
     /// Transition Ramp Up Medium Sharp 1 - 0 to 100%
-    TransitionRampUpMediumSharpOne0to100 = 90,
+    TransitionRampUpMediumSharpOne0to100,
     /// Transition Ramp Up Medium Sharp 2 - 0 to 100%
-    TransitionRampUpMediumSharpTwo0to100 = 91,
+    TransitionRampUpMediumSharpTwo0to100,
     /// Transition Ramp Up Short Sharp 1 - 0 to 100%
-    TransitionRampUpShortSharpOne0to100 = 92,
+    TransitionRampUpShortSharpOne0to100,
     /// Transition Ramp Up Short Sharp 2 - 0 to 100%
-    TransitionRampUpShortSharpTwo0to100 = 93,
+    TransitionRampUpShortSharpTwo0to100,
     /// Transition Ramp Down Long Smooth 1 - 50 to 0%
-    TransitionRampDownLongSmoothOne50to0 = 94,
+    TransitionRampDownLongSmoothOne50to0,
     /// Transition Ramp Down Long Smooth 2 - 50 to 0%
-    TransitionRampDownLongSmoothTwo50to0 = 95,
+    TransitionRampDownLongSmoothTwo50to0,
     /// Transition Ramp Down Medium Smooth 1 - 50 to 0%
-    TransitionRampDownMediumSmoothOne50to0 = 96,
+    TransitionRampDownMediumSmoothOne50to0,
     /// Transition Ramp Down Medium Smooth 2 - 50 to 0%
-    TransitionRampDownMediumSmoothTwo50to0 = 97,
+    TransitionRampDownMediumSmoothTwo50to0,
     /// Transition Ramp Down Short Smooth 1 - 50 to 0%
-    TransitionRampDownShortSmoothOne50to0 = 98,
+    TransitionRampDownShortSmoothOne50to0,
     /// Transition Ramp Down Short Smooth 2 - 50 to 0%
-    TransitionRampDownShortSmoothTwo50to0 = 99,
+    TransitionRampDownShortSmoothTwo50to0,
     /// Transition Ramp Down Long Sharp 1 - 50 to 0%
-    TransitionRampDownLongSharpOne50to0 = 100,
+    TransitionRampDownLongSharpOne50to0,
     /// Transition Ramp Down Long Sharp 2 - 50 to 0%
-    TransitionRampDownLongSharpTwo50to0 = 101,
+    TransitionRampDownLongSharpTwo50to0,
     /// Transition Ramp Down Medium Sharp 1 - 50 to 0%
-    TransitionRampDownMediumSharpOne50to0 = 102,
+    TransitionRampDownMediumSharpOne50to0,
     /// Transition Ramp Down Medium Sharp 2 - 50 to 0%
-    TransitionRampDownMediumSharpTwo50to0 = 103,
+    TransitionRampDownMediumSharpTwo50to0,
     /// Transition Ramp Down Short Sharp 1 - 50 to 0%
-    TransitionRampDownShortSharpOne50to0 = 104,
+    TransitionRampDownShortSharpOne50to0,
     /// Transition Ramp Down Short Sharp 2 - 50 to 0%
-    TransitionRampDownShortSharpTwo50to0 = 105,
+    TransitionRampDownShortSharpTwo50to0,
     /// Transition Ramp Up Long Smooth 1 - 0 to 50%
-    TransitionRampUpLongSmoothOne0to50 = 106,
+    TransitionRampUpLongSmoothOne0to50,
     /// Transition Ramp Up Long Smooth 2 - 0 to 50%
-    TransitionRampUpLongSmoothTwo0to50 = 107,
+    TransitionRampUpLongSmoothTwo0to50,
     /// Transition Ramp Up Medium Smooth 1 - 0 to 50%
-    TransitionRampUpMediumSmoothOne0to50 = 108,
+    TransitionRampUpMediumSmoothOne0to50,
     /// Transition Ramp Up Medium Smooth 2 - 0 to 50%
-    TransitionRampUpMediumSmoothTwo0to50 = 109,
+    TransitionRampUpMediumSmoothTwo0to50,
     /// Transition Ramp Up Short Smooth 1 - 0 to 50%
-    TransitionRampUpShortSmoothOne0to50 = 110,
+    TransitionRampUpShortSmoothOne0to50,
     /// Transition Ramp Up Short Smooth 2 - 0 to 50%
-    TransitionRampUpShortSmoothTwo0to50 = 111,
+    TransitionRampUpShortSmoothTwo0to50,
     /// Transition Ramp Up Long Sharp 1 - 0 to 50%
-    TransitionRampUpLongSharpOne0to50 = 112,
+    TransitionRampUpLongSharpOne0to50,
     /// Transition Ramp Up Long Sharp 2 - 0 to 50%
-    TransitionRampUpLongSharpTwo0to50 = 113,
+    TransitionRampUpLongSharpTwo0to50,
     /// Transition Ramp Up Medium Sharp 1 - 0 to 50%
-    TransitionRampUpMediumSharpOne0to50 = 114,
+    TransitionRampUpMediumSharpOne0to50,
     /// Transition Ramp Up Medium Sharp 2 - 0 to 50%
-    TransitionRampUpMediumSharpTwo0to50 = 115,
+    TransitionRampUpMediumSharpTwo0to50,
     /// Transition Ramp Up Short Sharp 1 - 0 to 50%
-    TransitionRampUpShortSharpOne0to50 = 116,
+    TransitionRampUpShortSharpOne0to50,
     /// Transition Ramp Up Short Sharp 2 - 0 to 50%
-    TransitionRampUpShortSharpTwo0to50 = 117,
+    TransitionRampUpShortSharpTwo0to50,
     /// Long Buzz For Programmatic Stopping - 100%
-    LongBuzzForProgrammaticStopping100 = 118,
+    LongBuzzForProgrammaticStopping100,
     /// Smooth Hum 1 (No kick or brake pulse) - 50%
-    SmoothHumOne50 = 119,
+    SmoothHumOne50,
     /// Smooth Hum 2 (No kick or brake pulse) - 40%
-    SmoothHumTwo40 = 120,
+    SmoothHumTwo40,
     /// Smooth Hum 3 (No kick or brake pulse) - 30%
-    SmoothHumThree30 = 121,
+    SmoothHumThree30,
     /// Smooth Hum 4 (No kick or brake pulse) - 20%
-    SmoothHumFour20 = 122,
+    SmoothHumFour20,
     /// Smooth Hum 5 (No kick or brake pulse) - 10%
-    SmoothHumFive10 = 123,
+    SmoothHumFive10,
 }
 
 bitfield! {
@@ -482,34 +616,6 @@ bitfield! {
     /// the sequencer reaches an identifier value of zero, or all eight identifiers are
     /// played (register addresses 0x04 through 0x0B), whichever comes first.
     waveform_seq, set_waveform_seq: 6, 0;
-}
-
-#[allow(unused)]
-impl WaveformReg {
-    /// Stops playing the sequence of effects
-    pub fn new_stop() -> Self {
-        let mut w = WaveformReg(0);
-        w.set_wait(false);
-        w.set_waveform_seq(0);
-        w
-    }
-
-    /// Set the effect
-    pub fn new_effect(effect: Effect) -> Self {
-        let mut w = WaveformReg(0);
-        w.set_wait(false);
-        w.set_waveform_seq(effect as u8);
-        w
-    }
-
-    /// Wait the specified amount of time (in 10ms intervals), before
-    /// moving to the next effect and playing it.
-    pub fn new_wait_time(tens_of_ms: u8) -> Self {
-        let mut w = WaveformReg(0);
-        w.set_wait(true);
-        w.set_waveform_seq(tens_of_ms);
-        w
-    }
 }
 
 bitfield! {
