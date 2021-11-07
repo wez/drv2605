@@ -3,23 +3,17 @@
 // to build for the metro_m0
 #![no_std]
 #![no_main]
-#![feature(used)]
 
-extern crate cortex_m;
-extern crate jlink_rtt;
 extern crate metro_m0 as hal;
 extern crate panic_rtt;
 
-#[macro_use(entry)]
-extern crate cortex_m_rt;
-
-extern crate drv2605;
-use drv2605::{Drv2605, Effect};
-
+use cortex_m_rt::entry;
+use drv2605::{Calibration, CalibrationParams, Drv2605l, Effect, Library, Mode, RomParams};
 use hal::clock::GenericClockController;
 use hal::delay::Delay;
 use hal::prelude::*;
 use hal::{CorePeripherals, Peripherals};
+use jlink_rtt;
 
 macro_rules! dbgprint {
     ($($arg:tt)*) => {
@@ -31,8 +25,7 @@ macro_rules! dbgprint {
     };
 }
 
-entry!(main);
-
+#[entry]
 fn main() -> ! {
     let mut peripherals = Peripherals::take().unwrap();
     let core = CorePeripherals::take().unwrap();
@@ -56,15 +49,67 @@ fn main() -> ! {
         &mut pins.port,
     );
 
-    let mut haptic = Drv2605::new(i2c);
-    dbgprint!("about to init device");
-    dbgprint!("init say: {:?}", haptic.init_open_loop_erm());
+    // Note secure motor to a mass or calibration will fail!
+    // might get away with defaults for an erm motor, but ideally compute these
+    let calib = CalibrationParams::default();
+    let mut haptic = Drv2605l::new(i2c, Calibration::Auto(calib), false).unwrap();
 
-    dbgprint!(
-        "set effect: {:?}",
-        haptic.set_single_effect(Effect::TransitionRampDownLongSmoothOne100to0)
-    );
+    // Or lra autocalibration would look like this.
+    // let mut calib = CalibrationParams::default();
+    // these are tricky and are computed from the lra motor and drv2605l datasheets
+    // calib.rated_voltage = 0x3E;
+    // calib.overdrive_voltage_clamp = 0x8C;
+    // calib.drive_time = 0x13;
+    // let mut haptic = Drv2605l::new(i2c, Calibration::Auto(calib), false).unwrap();
 
+    // print the sucessful calibration values so you can hardcode them
+    // let params = haptic.calibration().unwrap();
+    // dbgprint!(
+    //     "compenstation:{} back_emf:{} back_emf_gain:{}",
+    //     params.compenstation,
+    //     params.back_emf,
+    //     params.back_emf_gain
+    // );
+
+    // and hardcode them instead of using calibration like this
+    // let mut haptic = Drv2605l::new(
+    //     i2c,
+    //     //from the
+    //     Calibration::Load(drv2605::LoadParams {
+    //         compenstation: 0x3E,
+    //         back_emf: 0x89,
+    //         back_emf_gain: 0x25,
+    //     }),
+    //     false,
+    // )
+    // .unwrap();
+    // dbgprint!("device successfully init");
+
+    // rom mode using built in effects. Each library has all the same
+    // vibrations, but is tuned to work for certain motor characteristics so its
+    // important to choose Library for for your motor characteristics
+    haptic
+        .set_mode(Mode::Rom(Library::B, RomParams::default()))
+        .unwrap();
+
+    // set one effect to happen when go bit enabled
+    haptic
+        .set_rom_single(Effect::TransitionRampDownLongSmoothOne100to0)
+        .unwrap();
+    // or you could set a sequence of up to 8 Effects including delays
+    // let roms = [
+    //     Effect::StrongClick100,
+    //     Effect::Delays(10),
+    //     Effect::StrongClick100,
+    //     Effect::Delays(100),
+    //     Effect::StrongClick100,
+    //     Effect::Stop, //stop early
+    //     Effect::Stop, //stop early
+    //     Effect::Stop, //stop early
+    // ];
+    // haptic.set_rom(&roms).unwrap();
+
+    haptic.set_standby(false).unwrap();
     loop {
         for _ in 0..10 {
             delay.delay_ms(200u8);
@@ -73,6 +118,32 @@ fn main() -> ! {
             red_led.set_low();
         }
 
-        dbgprint!("go: {:?}", haptic.set_go(true));
+        dbgprint!("go: {:?}", haptic.set_go());
     }
+
+    // or rtp mode would look like this instead
+    // haptic.set_standby(false).unwrap();
+    // haptic.set_mode(Mode::RealTimePlayback).unwrap();
+    // loop {
+    //     haptic.set_standby(false).unwrap();
+
+    //     for i in 180..255 {
+    //         haptic.set_rtp(i).unwrap();
+    //         delay.delay_ms(100u8);
+    //     }
+    //     for i in (180..255).rev() {
+    //         haptic.set_rtp(i).unwrap();
+    //         delay.delay_ms(100u8);
+    //     }
+    //     haptic.set_standby(true).unwrap();
+    //     delay.delay_ms(255u8);
+    //     delay.delay_ms(255u8);
+    //     delay.delay_ms(255u8);
+    //     delay.delay_ms(255u8);
+    // }
+
+    // or pwm mode, assuming pwm has previously been configured and is
+    // outputting to the in/trig pin
+    // haptic.set_mode(Mode::Pwm).unwrap();
+    // haptic.set_standby(false).unwrap();
 }
